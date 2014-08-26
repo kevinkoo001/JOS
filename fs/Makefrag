@@ -13,6 +13,8 @@ FSIMGTXTFILES :=	fs/newmotd \
 			fs/motd \
 			fs/robig
 
+FSIMGTXTFILES :=	$(FSIMGTXTFILES) \
+			fs/index.html
 
 USERAPPS :=		$(USERAPPS) \
 			$(OBJDIR)/user/cat \
