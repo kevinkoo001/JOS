@@ -10,6 +10,8 @@
 #include <kern/dwarf_define.h>
 #include <kern/dwarf_error.h>
 
+#include <kern/pmap.h>
+#include <kern/env.h>
 
 extern int _dwarf_init(Dwarf_Debug dbg, void *obj);
 extern int _get_next_cu(Dwarf_Debug dbg, Dwarf_CU *cu);
@@ -72,6 +74,13 @@ static const char *const dwarf_regnames_i386[] =
 
 #endif
 
+
+struct UserStabData {
+	const struct Stab *stabs;
+	const struct Stab *stab_end;
+	const char *stabstr;
+	const char *stabstr_end;
+};
 
 int list_func_die(struct Ripdebuginfo *info, Dwarf_Die *die, uint64_t addr)
 {
@@ -201,8 +210,11 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info)
     if (addr >= ULIM) {
 	    elf = (void *)0x10000 + KERNBASE;
     } else {
-	    // Can't search for user-level addresses yet!
-	    panic("User address");
+	    if(curenv != lastenv) {
+		    find_debug_sections((uintptr_t)curenv->elf);
+		    lastenv = curenv;
+	    }
+	    elf = curenv->elf;
     }
     
     
