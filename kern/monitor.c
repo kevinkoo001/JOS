@@ -61,6 +61,9 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint64_t rbp = read_rbp();	// Curent rbp, defined in inc/x86.h
+	uint64_t* rbpPtr = (uint64_t*) rbp;	// 8 Bytes long rbp ptr
+	uint64_t rip = rbpPtr[1];	// Current return address location
 	return 0;
 }
 
