@@ -172,7 +172,7 @@ extern volatile pde_t uvpde[];     // VA of current page directory pointer
 extern volatile pde_t uvpml4e[];     // VA of current page map level 4
 #endif
 
-LIST_HEAD(Page_list,Page);
+LIST_HEAD(Page_list,Page);			// Adrian: pls refer to line 109 in inc/queue.h
 typedef LIST_ENTRY(Page) Page_LIST_entry_t;
 /*
  * Page descriptor structures, mapped at UPAGES.
