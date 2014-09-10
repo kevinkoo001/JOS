@@ -274,6 +274,7 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
+	check_page_free_list(0);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
@@ -398,7 +399,7 @@ page_init(void)
 		}
 	}
 	// Adrian: for debug
-	cprintf("\nInitialization finished!\n");
+	cprintf("page_init: initialization finished!\n\n");
 }
 
 //
@@ -417,6 +418,8 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
+	// Adrian: for debug
+	cprintf("page_alloc: start!\n");
 	struct PageInfo *newp;
 	newp = page_free_list;
 	if (newp == NULL)
@@ -455,6 +458,8 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
+	// Adrian: for debug
+	cprintf("page_free: start!\n");
 	if (pp->pp_ref!=0 || pp->pp_link != NULL)
 		panic("page_free: this page can not be freed!\n");
 	
@@ -687,6 +692,8 @@ check_page_free_list(bool only_low_memory)
 	}
 
 	assert(nfree_extmem > 0);
+	// Adrian: for debug
+	cprintf("check_page_free_list: check page free memory passed!\n");
 }
 
 
