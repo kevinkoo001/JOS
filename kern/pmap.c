@@ -389,7 +389,7 @@ page_init(void)
 		else
 		{
 			pages[i].pp_ref = 0;
-			pages[i].pp_link = last;		// Adrian: pp_link means next page on the free page list.
+			pages[i].pp_link = NULL;		// Adrian: pp_link means next page on the free page list.
 			if(last)
 				last->pp_link = &pages[i];
 			else
@@ -427,8 +427,8 @@ page_alloc(int alloc_flags)
 	else
 	{
 		if (alloc_flags & ALLOC_ZERO)
-			memset(page2kva(newp), 0, PGSIZE);
-		page_free_list = page_free_list->pp_link;
+			memset(page2kva(newp), 0, PGSIZE);		// Adrian: initialize the new page if required
+		page_free_list = page_free_list->pp_link;	// Adrian: move pointer to the next free page
 		newp->pp_link = NULL;
 		return newp;
 	}
@@ -458,8 +458,8 @@ page_free(struct PageInfo *pp)
 	if (pp->pp_ref!=0 || pp->pp_link != NULL)
 		panic("page_free: this page can not be freed!\n");
 	
-	pp->pp_link = last;
-	last = pp;
+	pp->pp_link = page_free_list;
+	page_free_list = pp;
 }
 
 //
