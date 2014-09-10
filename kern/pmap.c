@@ -266,7 +266,7 @@ x64_vm_init(void)
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
 	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));		// Adrian: read page number from npages and multiply struct length.
-	// Adrian: we store the initial mem address of pages in pages.
+	// Adrian: we store the initial mem address of pages in 'pages'.
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -346,8 +346,8 @@ page_init(void)
 	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM), which must		* 	0xA0000 is IOPHYSMEM, 0x100000 is EXTPHYSMEM
 	//     never be allocated.												* 3) initial boot page table, [BOOT_PAGE_TABLE_START, BOOT_PAGE_TABLE_END)
 	//  4) Then extended memory [EXTPHYSMEM, ...).							* 4) kernel, from 0x100000 to end_debug
-	//     Some of it is in use, some is free. Where is the kernel			* BOOT_PAGE_TABLE_START=0xf0008000, BOOT_PAGE_TABLE_END=0xf000e000
-	//     in physical memory?  Which pages are already in use for			* 2) to 4) is consecutive.
+	//     Some of it is in use, some is free. Where is the kernel			* 5) BOOT_PAGE_TABLE_START=0xf0008000, BOOT_PAGE_TABLE_END=0xf000e000
+	//     in physical memory?  Which pages are already in use for			* pay attention: 2) to 4) is consecutive.
 	//     page tables and other data structures?
 	//
 	// Change the code to reflect this.
@@ -359,15 +359,37 @@ page_init(void)
 	size_t i;
 	struct PageInfo* last = NULL;
 	extern uintptr_t end_debug;
-	for (i = 0; i < npages; i++) {
-		if((i == 0) || (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)&pages[i] < end_debug))
+	uintptr_t iova_st = (uintptr_t)pa2page((physaddr_t)IOPHYSMEM);		// Adrian: try to distinguish kva and va:(
+	//uintptr_t bptva_st = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_START);
+	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
+	
+	// Adrian: for debug
+	cprintf("  end_debug %08x (virt)\n", end_debug);
+	cprintf("  BOOT_PAGE_TABLE_START\t%08x (virt)\n", BOOT_PAGE_TABLE_START);	// Adrian: this should not be virtual address!!!
+	cprintf("  BOOT_PAGE_TABLE_END\t%08x (virt)\n", BOOT_PAGE_TABLE_END);
+	cprintf("  pages[0]\t%08x (pointer addr) %08x (page kva)\n", &pages[0], (uintptr_t)page2kva(&pages[0]));
+	cprintf("  pages[1]\t%08x (pointer addr) %08x (page kva)\n", &pages[1], (uintptr_t)page2kva(&pages[1]));
+	cprintf("  pages[2]\t%08x (pointer addr) %08x (page kva)\n", &pages[2], (uintptr_t)page2kva(&pages[2]));
+	cprintf("  pages[%u]\t%08x (pointer addr)\n", npages, &pages[npages]);	// Adrian: something is wrong here.
+	cprintf("  npages_basemem is: %08u\n", npages_basemem);
+	cprintf("  iova_st\t%08x (virt)\n\n", (uintptr_t)iova_st);
+	
+	for (i = 0; i < npages; i++) {		// Adrian: spent so much time on this bullshit!
+		if((i == 0)
+			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && &pages[i] < pa2page((physaddr_t)(end_debug-KERNBASE)))
+			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
+			//|| (uintptr_t)page2kva(&pages[i]) >= iova_st && (uintptr_t)page2kva(&pages[i]) < end_debug)
+			//|| (uintptr_t)page2kva(&pages[i]) >= bptva_st && (uintptr_t)page2kva(&pages[i]) < bptva_en)
 		{
+			// Adrian: for debug
+			//cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
+			
 			pages[i].pp_ref = 1;
 		}
 		else
 		{
 			pages[i].pp_ref = 0;
-			pages[i].pp_link = page_free_list;		// Adrian: pp_link means next page on the free page list.
+			pages[i].pp_link = last;		// Adrian: pp_link means next page on the free page list.
 			if(last)
 				last->pp_link = &pages[i];
 			else
@@ -375,6 +397,8 @@ page_init(void)
 			last = &pages[i];		// Adrian: pointer last will always point to the last page.
 		}
 	}
+	// Adrian: for debug
+	cprintf("\nInitialization finished!\n");
 }
 
 //
@@ -404,7 +428,7 @@ page_alloc(int alloc_flags)
 	{
 		if (alloc_flags & ALLOC_ZERO)
 			memset(page2kva(newp), 0, PGSIZE);
-		page_free_list = newp->pp_link;
+		page_free_list = page_free_list->pp_link;
 		newp->pp_link = NULL;
 		return newp;
 	}
@@ -434,8 +458,8 @@ page_free(struct PageInfo *pp)
 	if (pp->pp_ref!=0 || pp->pp_link != NULL)
 		panic("page_free: this page can not be freed!\n");
 	
-	pp->pp_link = page_free_list;
-	page_free_list = pp;
+	pp->pp_link = last;
+	last = pp;
 }
 
 //
