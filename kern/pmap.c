@@ -274,7 +274,7 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
-	check_page_free_list(0);
+	check_page_free_list(1);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
@@ -365,7 +365,7 @@ page_init(void)
 	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
 	
 	// Adrian: for debug
-	cprintf("  end_debug %08x (virt)\n", end_debug);
+	cprintf("  end_debug\t%08x (virt)\n", end_debug);
 	cprintf("  BOOT_PAGE_TABLE_START\t%08x (virt)\n", BOOT_PAGE_TABLE_START);	// Adrian: this should not be virtual address!!!
 	cprintf("  BOOT_PAGE_TABLE_END\t%08x (virt)\n", BOOT_PAGE_TABLE_END);
 	cprintf("  pages[0]\t%08x (pointer addr) %08x (page kva)\n", &pages[0], (uintptr_t)page2kva(&pages[0]));
