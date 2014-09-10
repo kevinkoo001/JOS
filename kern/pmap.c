@@ -30,11 +30,11 @@ static struct PageInfo *page_free_list;	// Free list of physical pages
 static int
 nvram_read(int r)
 {
-	return mc146818_read(r) | (mc146818_read(r + 1) << 8);
+	return mc146818_read(r) | (mc146818_read(r + 1) << 8);		// Adrian: don't understand this
 }
 
 static void
-multiboot_read(multiboot_info_t* mbinfo, size_t* basemem, size_t* extmem) {
+multiboot_read(multiboot_info_t* mbinfo, size_t* basemem, size_t* extmem) {		// Adrian: base memory should be 640KB
 	int i;
 
 	memory_map_t* mmap_base = (memory_map_t*)(uintptr_t)mbinfo->mmap_addr;
@@ -128,7 +128,7 @@ i386_detect_memory(void)
 		extmem = (nvram_read(NVRAM_EXTLO) * 1024);
 	}
     
-    assert(basemem);
+    assert(basemem);		// Adrian: test if basemem == 0?
 
 	npages_basemem = basemem / PGSIZE;
 	npages_extmem = extmem / PGSIZE;
@@ -136,7 +136,7 @@ i386_detect_memory(void)
     // Calculate the number of physical pages available in both base
     // and extended memory.
     if (npages_extmem)
-            npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
+            npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;		// Adrian: #define EXTPHYSMEM	0x100000
     else
             npages = npages_basemem;
 
@@ -151,12 +151,12 @@ i386_detect_memory(void)
 	if (npages_extmem)
 		npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
 	else
-		npages = npages_basemem;
+		npages = npages_basemem;		// Adrian: if we don't have extended memory, which is impossible.
 
 	cprintf("Physical memory: %uM available, base = %uK, extended = %uK, npages = %d\n",
 		npages * PGSIZE / (1024 * 1024),
 		npages_basemem * PGSIZE / 1024,
-		npages_extmem * PGSIZE / 1024);
+		npages_extmem * PGSIZE / 1024);		// Adrian: where the hell is npages? but result is correct!!!
     
     //JOS is hardwired to support only 256M of physical memory
     if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
@@ -201,9 +201,10 @@ boot_alloc(uint32_t n)
 	// which points to the end of the kernel's bss segment:
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
-	if (!nextfree) {
+	if (!nextfree) {		// Adrian: this only execute at the first time, initialize nextfree
         extern uintptr_t end_debug;							// Adrian: end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
-		nextfree = ROUNDUP((char *) end_debug, PGSIZE);		// Adrian: see define at line 64 of inc/types.h
+		nextfree = ROUNDUP((char *) end_debug, PGSIZE);		// Adrian: see define at line 64 of inc/types.h, I think end_debug is kernel memory space plus dwarf used space.
+		//cprintf("nextfree's value is: %u\n", nextfree);	// Adrian: after this, nextfree should point to next free mem address
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -211,10 +212,21 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-	//if (n>0)
-	//{
-		
-	//}
+	if (n > 0)
+	{
+		result = nextfree;
+		if (PADDR (ROUNDUP (nextfree + n, PGSIZE)) > (uint64_t)(npages * PGSIZE))		// Adrian: don't know how to calculate this
+			panic("\n\tboot_alloc: Insufficient memory space to allocate\n\n");
+		nextfree = ROUNDUP (nextfree + n, PGSIZE);		// Adrian: this is exactly for alignment purpose.
+		return result;
+	}
+	else if (n == 0)
+		return nextfree;
+	else
+	{
+		cprintf("boot_alloc: invalid memory allocating request!\n");
+		return NULL;
+	}
 
 	return NULL;
 }
@@ -231,20 +243,21 @@ boot_alloc(uint32_t n)
 void
 x64_vm_init(void)
 {
-	pml4e_t* pml4e;
+	pml4e_t* pml4e;		// Adrian: Page Map Level 4 Index
 	uint32_t cr0;
 	uint64_t n;
 	int r;
-	struct Env *env;
+	struct Env *env;	// Adrian: what's this?
 	i386_detect_memory();
 	//panic("i386_vm_init: This function is not finished\n");
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
-	panic("x64_vm_init: this function is not finished\n");
+	// Adrian: I'm going to comment this.
+	//panic("x64_vm_init: this function is not finished\n");
 	pml4e = boot_alloc(PGSIZE);
-	memset(pml4e, 0, PGSIZE);
-	boot_pml4e = pml4e;
-	boot_cr3 = PADDR(pml4e);
+	memset(pml4e, 0, PGSIZE);	// Adrian: initialize PML4
+	boot_pml4e = pml4e;		// Adrian: start address of the first table!
+	boot_cr3 = PADDR(pml4e);	// Adrian: stores physical address in cr3
 
 	//////////////////////////////////////////////////////////////////////
 	// Allocate an array of npages 'struct PageInfo's and store it in 'pages'.
@@ -252,6 +265,8 @@ x64_vm_init(void)
 	// each physical page, there is a corresponding struct PageInfo in this
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
+	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));		// Adrian: read page number from npages and multiply struct length.
+	// Adrian: we store the initial mem address of pages in pages.
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -326,13 +341,13 @@ page_init(void)
 	//  1) Mark physical page 0 as in use.
 	//     This way we preserve the real-mode IDT and BIOS structures
 	//     in case we ever need them.  (Currently we don't, but...)
-	//  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)
-	//     is free.
-	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM), which must
-	//     never be allocated.
-	//  4) Then extended memory [EXTPHYSMEM, ...).
-	//     Some of it is in use, some is free. Where is the kernel
-	//     in physical memory?  Which pages are already in use for
+	//  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)		* Adrian summerize: 1) page 0 in use, [0, PGSIZE)
+	//     is free.															* 2) IO holes, from 0xA0000 - 0x100000 (pa!)
+	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM), which must		* 	0xA0000 is IOPHYSMEM, 0x100000 is EXTPHYSMEM
+	//     never be allocated.												* 3) initial boot page table, [BOOT_PAGE_TABLE_START, BOOT_PAGE_TABLE_END)
+	//  4) Then extended memory [EXTPHYSMEM, ...).							* 4) kernel, from 0x100000 to end_debug
+	//     Some of it is in use, some is free. Where is the kernel			* BOOT_PAGE_TABLE_START=0xf0008000, BOOT_PAGE_TABLE_END=0xf000e000
+	//     in physical memory?  Which pages are already in use for			* 2) to 4) is consecutive.
 	//     page tables and other data structures?
 	//
 	// Change the code to reflect this.
@@ -343,14 +358,22 @@ page_init(void)
 	// NB: Remember to mark the memory used for initial boot page table i.e (va>=BOOT_PAGE_TABLE_START && va < BOOT_PAGE_TABLE_END) as in-use (not free)
 	size_t i;
 	struct PageInfo* last = NULL;
+	extern uintptr_t end_debug;
 	for (i = 0; i < npages; i++) {
-		pages[i].pp_ref = 0;
-		pages[i].pp_link = NULL;
-        if(last)
-            last->pp_link = &pages[i];
-        else
-            page_free_list = &pages[i];
-		last = &pages[i];
+		if((i == 0) || (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)&pages[i] < end_debug))
+		{
+			pages[i].pp_ref = 1;
+		}
+		else
+		{
+			pages[i].pp_ref = 0;
+			pages[i].pp_link = page_free_list;		// Adrian: pp_link means next page on the free page list.
+			if(last)
+				last->pp_link = &pages[i];
+			else
+				page_free_list = &pages[i];		// Adrian: else will only execute at the first time, point page_free_list to the first free page.
+			last = &pages[i];		// Adrian: pointer last will always point to the last page.
+		}
 	}
 }
 
@@ -370,7 +393,22 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
-	return 0;
+	struct PageInfo *newp;
+	newp = page_free_list;
+	if (newp == NULL)
+	{
+		cprintf("page_alloc: run out of memory!\n");
+		return NULL;
+	}
+	else
+	{
+		if (alloc_flags & ALLOC_ZERO)
+			memset(page2kva(newp), 0, PGSIZE);
+		page_free_list = newp->pp_link;
+		newp->pp_link = NULL;
+		return newp;
+	}
+	
 }
 
 //
@@ -393,6 +431,11 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
+	if (pp->pp_ref!=0 || pp->pp_link != NULL)
+		panic("page_free: this page can not be freed!\n");
+	
+	pp->pp_link = page_free_list;
+	page_free_list = pp;
 }
 
 //

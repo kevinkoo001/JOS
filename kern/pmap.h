@@ -21,7 +21,7 @@ extern pml4e_t *boot_pml4e;
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
  * and returns the corresponding physical address.  It panics if you pass it a
  * non-kernel virtual address.
- */
+ */ //Adrian: physaddr_t IS uint64_t! can't stand anymore! kva: kernel virtual address
 #define PADDR(kva)						\
 ({								\
 	physaddr_t __m_kva = (physaddr_t) (kva);		\
