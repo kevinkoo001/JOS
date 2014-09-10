@@ -49,13 +49,13 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	extern char _start[], entry[], etext[], edata[], end[];
 
 	cprintf("Special kernel symbols:\n");
-	cprintf("  _start                  %08x (phys)\n", _start);
-	cprintf("  entry  %08x (virt)  %08x (phys)\n", entry, entry - KERNBASE);
-	cprintf("  etext  %08x (virt)  %08x (phys)\n", etext, etext - KERNBASE);
-	cprintf("  edata  %08x (virt)  %08x (phys)\n", edata, edata - KERNBASE);
-	cprintf("  end    %08x (virt)  %08x (phys)\n", end, end - KERNBASE);
+	cprintf("  _start                  %08x (phys)\n", _start);		// Adrian below: _start = RELOC(entry) at line 43 of entry.S
+	cprintf("  entry  %08x (virt)  %08x (phys)\n", entry, entry - KERNBASE);	// u can see entry - KERNBASE = _start
+	cprintf("  etext  %08x (virt)  %08x (phys)\n", etext, etext - KERNBASE);	// should be memory space storing code
+	cprintf("  edata  %08x (virt)  %08x (phys)\n", edata, edata - KERNBASE);	// should be memory space storing data
+	cprintf("  end    %08x (virt)  %08x (phys)\n", end, end - KERNBASE);		// end points to the end of the kernel's bss segment
 	cprintf("Kernel executable memory footprint: %dKB\n",
-		ROUNDUP(end - entry, 1024) / 1024);
+		ROUNDUP(end - entry, 1024) / 1024);		// last address minus first address of kernel, don't know why need to be divided by 1024 again
 	return 0;
 }
 

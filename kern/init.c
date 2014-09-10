@@ -25,7 +25,7 @@ i386_init(void)
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
-	memset(edata, 0, end - edata);
+	memset(edata, 0, end - edata);		// Adrian: initialize from edata to end-edata
 
 	// Initialize the console.
 	// Can't call cprintf until after we do this!

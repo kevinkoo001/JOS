@@ -14,7 +14,7 @@
 #define BOOT_PAGE_TABLE_END   0xf000e000
 
 // These variables are set by i386_detect_memory()
-size_t npages;			// Amount of physical memory (in pages)
+size_t npages;			// Amount of physical memory (in pages)			Adrian: size_t equals to uint64_t, defined in inc/types.h
 static size_t npages_basemem;	// Amount of base memory (in pages)
 
 // These variables are set in mem_init()
@@ -119,9 +119,9 @@ i386_detect_memory(void)
     // Check if the bootloader passed us a multiboot structure
     extern char multiboot_info[];
     uintptr_t* mbp = (uintptr_t*)multiboot_info;
-    multiboot_info_t * mbinfo = (multiboot_info_t*)*mbp;
+    multiboot_info_t * mbinfo = (multiboot_info_t*)*mbp;	// Adrian: this is defined in line 63 of kern/multiboot.h
 
-    if(mbinfo && (mbinfo->flags & MB_FLAG_MMAP)) {
+    if(mbinfo && (mbinfo->flags & MB_FLAG_MMAP)) {			// Adrian: define MB_FLAG_MMAP 0x40
     	multiboot_read(mbinfo, &basemem, &extmem);
 	} else {
 		basemem = (nvram_read(NVRAM_BASELO) * 1024);
@@ -202,8 +202,8 @@ boot_alloc(uint32_t n)
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
 	if (!nextfree) {
-        extern uintptr_t end_debug;
-		nextfree = ROUNDUP((char *) end_debug, PGSIZE);
+        extern uintptr_t end_debug;							// Adrian: end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
+		nextfree = ROUNDUP((char *) end_debug, PGSIZE);		// Adrian: see define at line 64 of inc/types.h
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -211,6 +211,10 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
+	//if (n>0)
+	//{
+		
+	//}
 
 	return NULL;
 }
