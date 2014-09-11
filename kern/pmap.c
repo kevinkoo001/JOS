@@ -265,6 +265,8 @@ x64_vm_init(void)
 	// each physical page, there is a corresponding struct PageInfo in this
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
+	// Adrian: for debug
+	cprintf("  npages: %d, size of struct PageInfo is: %d\n", npages, sizeof(struct PageInfo));
 	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));		// Adrian: read page number from npages and multiply struct length.
 	// Adrian: we store the initial mem address of pages in 'pages'.
 
@@ -360,6 +362,8 @@ page_init(void)
 	size_t i;
 	struct PageInfo* last = NULL;
 	extern uintptr_t end_debug;
+	char* nextfree = ROUNDUP((char*)end_debug, PGSIZE);
+	nextfree = ROUNDUP(nextfree+npages*sizeof(struct PageInfo), PGSIZE);
 	uintptr_t iova_st = (uintptr_t)pa2page((physaddr_t)IOPHYSMEM);		// Adrian: try to distinguish kva and va:(
 	//uintptr_t bptva_st = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_START);
 	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
@@ -371,21 +375,22 @@ page_init(void)
 	cprintf("  pages[0]\t%08x (pointer addr) %08x (page kva)\n", &pages[0], (uintptr_t)page2kva(&pages[0]));
 	cprintf("  pages[1]\t%08x (pointer addr) %08x (page kva)\n", &pages[1], (uintptr_t)page2kva(&pages[1]));
 	cprintf("  pages[2]\t%08x (pointer addr) %08x (page kva)\n", &pages[2], (uintptr_t)page2kva(&pages[2]));
-	cprintf("  pages[%u]\t%08x (pointer addr)\n", npages, &pages[npages]);	// Adrian: something is wrong here.
+	cprintf("  pages[%d]\t%08x (pointer addr)\n", npages, &pages[npages]);	// Adrian: something is wrong here.
 	cprintf("  npages_basemem is: %08u\n", npages_basemem);
 	cprintf("  iova_st\t%08x (virt)\n\n", (uintptr_t)iova_st);
 	
 	for (i = 0; i < npages; i++) {		// Adrian: spent so much time on this bullshit!
 		if((i == 0)
-			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && &pages[i] < pa2page((physaddr_t)(end_debug-KERNBASE)))
+			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)page2kva(&pages[i]) < (uintptr_t)nextfree)
 			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
 			//|| (uintptr_t)page2kva(&pages[i]) >= iova_st && (uintptr_t)page2kva(&pages[i]) < end_debug)
 			//|| (uintptr_t)page2kva(&pages[i]) >= bptva_st && (uintptr_t)page2kva(&pages[i]) < bptva_en)
 		{
 			// Adrian: for debug
-			//cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
+			cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
 			
 			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
 		}
 		else
 		{
