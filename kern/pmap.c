@@ -276,7 +276,9 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
+	// Adrian: check if ex1 is finished.
 	check_page_free_list(1);
+	check_page_alloc();
 
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory 
@@ -362,8 +364,7 @@ page_init(void)
 	size_t i;
 	struct PageInfo* last = NULL;
 	extern uintptr_t end_debug;
-	char* nextfree = ROUNDUP((char*)end_debug, PGSIZE);
-	nextfree = ROUNDUP(nextfree+npages*sizeof(struct PageInfo), PGSIZE);
+	char*  first_free_page = (char *) boot_alloc(0);
 	uintptr_t iova_st = (uintptr_t)pa2page((physaddr_t)IOPHYSMEM);		// Adrian: try to distinguish kva and va:(
 	//uintptr_t bptva_st = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_START);
 	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
@@ -375,19 +376,19 @@ page_init(void)
 	cprintf("  pages[0]\t%08x (pointer addr) %08x (page kva)\n", &pages[0], (uintptr_t)page2kva(&pages[0]));
 	cprintf("  pages[1]\t%08x (pointer addr) %08x (page kva)\n", &pages[1], (uintptr_t)page2kva(&pages[1]));
 	cprintf("  pages[2]\t%08x (pointer addr) %08x (page kva)\n", &pages[2], (uintptr_t)page2kva(&pages[2]));
-	cprintf("  pages[%d]\t%08x (pointer addr)\n", npages, &pages[npages]);	// Adrian: something is wrong here.
+	cprintf("  pages[%d]\t%08x (pointer addr) %08x (page kva)\n", npages, &pages[npages-1], (uintptr_t)page2kva(&pages[npages-1]));	// Adrian: something is wrong here.
 	cprintf("  npages_basemem is: %08u\n", npages_basemem);
 	cprintf("  iova_st\t%08x (virt)\n\n", (uintptr_t)iova_st);
 	
 	for (i = 0; i < npages; i++) {		// Adrian: spent so much time on this bullshit!
 		if((i == 0)
-			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)page2kva(&pages[i]) < (uintptr_t)nextfree)
+			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)page2kva(&pages[i]) < (uintptr_t)first_free_page)
 			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
 			//|| (uintptr_t)page2kva(&pages[i]) >= iova_st && (uintptr_t)page2kva(&pages[i]) < end_debug)
 			//|| (uintptr_t)page2kva(&pages[i]) >= bptva_st && (uintptr_t)page2kva(&pages[i]) < bptva_en)
 		{
 			// Adrian: for debug
-			cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
+			//cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
 			
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
@@ -405,6 +406,11 @@ page_init(void)
 	}
 	// Adrian: for debug
 	cprintf("page_init: initialization finished!\n\n");
+	uint64_t err_pp = 0x800432fff0;
+	struct PageInfo* errpp = (struct PageInfo*)err_pp;
+	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	errpp = errpp->pp_link;
+	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
 }
 
 //
@@ -718,9 +724,24 @@ check_page_alloc(void)
 	// if there's a page that shouldn't be on
 	// the free list, try to make sure it
 	// eventually causes trouble.
+	
+	// Adrian: for debug
+	/*uint64_t err_pp = 0x800432fff0;
+	struct PageInfo* errpp = (struct PageInfo*)err_pp;
+	cprintf("\n  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	errpp = errpp->pp_link;
+	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));*/
+	
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {
+		// Adrian: for debug
+		//if ((uint64_t)pp0==0x800432fff0 || (uint64_t)pp0==0x8004330000)
+		//{
+			//cprintf("  pp0\t%08x (pointer addr) %08x %08x (page kva)\n", pp0, pp0->pp_link, (uintptr_t)page2kva(pp0));
+		//}
 		memset(page2kva(pp0), 0x97, PGSIZE);
 	}
+	// Adrian: for debug
+	cprintf("check free page finished!\n");
 
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {
 		// check that we didn't corrupt the free list itself
