@@ -156,7 +156,7 @@ i386_detect_memory(void)
 	cprintf("Physical memory: %uM available, base = %uK, extended = %uK, npages = %d\n",
 		npages * PGSIZE / (1024 * 1024),
 		npages_basemem * PGSIZE / 1024,
-		npages_extmem * PGSIZE / 1024);		// Adrian: where the hell is npages? but result is correct!!!
+		npages_extmem * PGSIZE / 1024, npages);		// Adrian: add npages manually
     
     //JOS is hardwired to support only 256M of physical memory
     if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
