@@ -10,6 +10,7 @@
 #include <kern/kclock.h>
 #include <kern/multiboot.h>
 
+extern uint64_t pml4phys;
 #define BOOT_PAGE_TABLE_START 0xf0008000
 #define BOOT_PAGE_TABLE_END   0xf000e000
 
@@ -132,7 +133,8 @@ i386_detect_memory(void)
 		extmem = (nvram_read(NVRAM_EXTLO) * 1024);
 	}
     
-    assert(basemem);
+	assert(basemem);
+
 	npages_basemem = basemem / PGSIZE;
 	npages_extmem = extmem / PGSIZE;
 
@@ -160,14 +162,14 @@ i386_detect_memory(void)
 	cprintf("Physical memory: %uM available, base = %uK, extended = %uK, npages = %d\n",
 		npages * PGSIZE / (1024 * 1024),
 		npages_basemem * PGSIZE / 1024,
-		npages_extmem * PGSIZE / 1024, npages); // Missing arg added
+		npages_extmem * PGSIZE / 1024, 
+		npages);
     
     //JOS is hardwired to support only 256M of physical memory
     if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
         npages = (255 * 1024 * 1024) / PGSIZE;
         cprintf("Using only %uK of the available memory.\n", npages * PGSIZE/1024);
     }
-
 }
 
 
@@ -205,7 +207,6 @@ boot_alloc(uint32_t n)
 	// which points to the end of the kernel's bss segment:
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
-	
 	if (!nextfree) {
 		// @@@ end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); @kern\init.c:37
         extern uintptr_t end_debug;
