@@ -14,7 +14,8 @@
 #define BOOT_PAGE_TABLE_END   0xf000e000
 
 // These variables are set by i386_detect_memory()
-size_t npages;			// Amount of physical memory (in pages)			Adrian: size_t equals to uint64_t, defined in inc/types.h
+// @@@ size_t equals to uint64_t, defined in inc/types.h
+size_t npages;			// Amount of physical memory (in pages)
 static size_t npages_basemem;	// Amount of base memory (in pages)
 
 // These variables are set in mem_init()
@@ -30,11 +31,12 @@ static struct PageInfo *page_free_list;	// Free list of physical pages
 static int
 nvram_read(int r)
 {
-	return mc146818_read(r) | (mc146818_read(r + 1) << 8);		// Adrian: don't understand this
+	return mc146818_read(r) | (mc146818_read(r + 1) << 8);
 }
 
+// @@@ Base memory = 640KB
 static void
-multiboot_read(multiboot_info_t* mbinfo, size_t* basemem, size_t* extmem) {		// Adrian: base memory should be 640KB
+multiboot_read(multiboot_info_t* mbinfo, size_t* basemem, size_t* extmem) {
 	int i;
 
 	memory_map_t* mmap_base = (memory_map_t*)(uintptr_t)mbinfo->mmap_addr;
@@ -119,24 +121,26 @@ i386_detect_memory(void)
     // Check if the bootloader passed us a multiboot structure
     extern char multiboot_info[];
     uintptr_t* mbp = (uintptr_t*)multiboot_info;
-    multiboot_info_t * mbinfo = (multiboot_info_t*)*mbp;	// Adrian: this is defined in line 63 of kern/multiboot.h
-
-    if(mbinfo && (mbinfo->flags & MB_FLAG_MMAP)) {			// Adrian: define MB_FLAG_MMAP 0x40
+	// @@@ Define multiboot type @kern/multiboot.h:63
+    multiboot_info_t * mbinfo = (multiboot_info_t*)*mbp;
+	
+	// @@@ Define MB_FLAG_MMAP 0x40
+    if(mbinfo && (mbinfo->flags & MB_FLAG_MMAP)) {
     	multiboot_read(mbinfo, &basemem, &extmem);
 	} else {
 		basemem = (nvram_read(NVRAM_BASELO) * 1024);
 		extmem = (nvram_read(NVRAM_EXTLO) * 1024);
 	}
     
-    assert(basemem);		// Adrian: test if basemem == 0?
-
+    assert(basemem);
 	npages_basemem = basemem / PGSIZE;
 	npages_extmem = extmem / PGSIZE;
 
     // Calculate the number of physical pages available in both base
     // and extended memory.
     if (npages_extmem)
-            npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;		// Adrian: #define EXTPHYSMEM	0x100000
+			// @@@ Define EXTPHYSMEM	0x100000
+            npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
     else
             npages = npages_basemem;
 
@@ -151,12 +155,12 @@ i386_detect_memory(void)
 	if (npages_extmem)
 		npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
 	else
-		npages = npages_basemem;		// Adrian: if we don't have extended memory, which is impossible.
+		npages = npages_basemem;
 
 	cprintf("Physical memory: %uM available, base = %uK, extended = %uK, npages = %d\n",
 		npages * PGSIZE / (1024 * 1024),
 		npages_basemem * PGSIZE / 1024,
-		npages_extmem * PGSIZE / 1024, npages);		// Adrian: add npages manually
+		npages_extmem * PGSIZE / 1024, npages); // Missing arg added
     
     //JOS is hardwired to support only 256M of physical memory
     if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
@@ -201,10 +205,16 @@ boot_alloc(uint32_t n)
 	// which points to the end of the kernel's bss segment:
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
-	if (!nextfree) {		// Adrian: this only execute at the first time, initialize nextfree
-        extern uintptr_t end_debug;							// Adrian: end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); 
-		nextfree = ROUNDUP((char *) end_debug, PGSIZE);		// Adrian: see define at line 64 of inc/types.h, I think end_debug is kernel memory space plus dwarf used space.
-		//cprintf("nextfree's value is: %u\n", nextfree);	// Adrian: after this, nextfree should point to next free mem address
+	
+	if (!nextfree) {
+		// @@@ end_debug = read_section_headers((0x10000+KERNBASE), (uintptr_t)end); @kern\init.c:37
+        extern uintptr_t end_debug;
+		// @@@ Rounding function to keep the multiple of PGSIZE @inc/types.h:64
+		// @@@ nextfree: ptr to next free memory addr
+		nextfree = ROUNDUP((char *) end_debug, PGSIZE);
+		#ifdef DEBUG
+		cprintf("[DEBUG] nextfree's value is: %u\n", nextfree);
+		#endif
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -215,20 +225,19 @@ boot_alloc(uint32_t n)
 	if (n > 0)
 	{
 		result = nextfree;
-		if (PADDR (ROUNDUP (nextfree + n, PGSIZE)) > (uint64_t)(npages * PGSIZE))		// Adrian: don't know how to calculate this
+		if (PADDR (ROUNDUP (nextfree + n, PGSIZE)) > (uint64_t)(npages * PGSIZE))
 			panic("\n\tboot_alloc: Insufficient memory space to allocate\n\n");
-		nextfree = ROUNDUP (nextfree + n, PGSIZE);		// Adrian: this is exactly for alignment purpose.
+		// @@@ Rounding function to keep the multiple of PGSIZE @inc/types.h:64
+		nextfree = ROUNDUP (nextfree + n, PGSIZE);
 		return result;
 	}
 	else if (n == 0)
 		return nextfree;
 	else
 	{
-		cprintf("boot_alloc: invalid memory allocating request!\n");
+		cprintf("boot_alloc(): Invalid memory allocation request!\n");
 		return NULL;
 	}
-
-	return NULL;
 }
 
 // Set up a four-level page table:
@@ -243,21 +252,25 @@ boot_alloc(uint32_t n)
 void
 x64_vm_init(void)
 {
-	pml4e_t* pml4e;		// Adrian: Page Map Level 4 Index
+	pml4e_t* pml4e;
 	uint32_t cr0;
 	uint64_t n;
 	int r;
-	struct Env *env;	// Adrian: what's this?
+	struct Env *env;
 	i386_detect_memory();
-	//panic("i386_vm_init: This function is not finished\n");
+
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
-	// Adrian: I'm going to comment this.
+	// @@@ Commented out the next line due to complete implementation
 	//panic("x64_vm_init: this function is not finished\n");
+	
+	// @@@ Initialize pml4e with 0s, page map level 4 index
 	pml4e = boot_alloc(PGSIZE);
-	memset(pml4e, 0, PGSIZE);	// Adrian: initialize PML4
-	boot_pml4e = pml4e;		// Adrian: start address of the first table!
-	boot_cr3 = PADDR(pml4e);	// Adrian: stores physical address in cr3
+	memset(pml4e, 0, PGSIZE);
+	// @@@ Define the starting address of the first table
+	boot_pml4e = pml4e;
+	// @@@ Store physical address in cr3
+	boot_cr3 = PADDR(pml4e);
 
 	//////////////////////////////////////////////////////////////////////
 	// Allocate an array of npages 'struct PageInfo's and store it in 'pages'.
@@ -265,10 +278,13 @@ x64_vm_init(void)
 	// each physical page, there is a corresponding struct PageInfo in this
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
-	// Adrian: for debug
-	cprintf("  npages: %d, size of struct PageInfo is: %d\n", npages, sizeof(struct PageInfo));
-	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));		// Adrian: read page number from npages and multiply struct length.
-	// Adrian: we store the initial mem address of pages in 'pages'.
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG] # of pages: %d, size of struct PageInfo is: %d bytes\n", npages, sizeof(struct PageInfo));
+	#endif
+	
+	// @@@ Define ptr pointing to the first addr of the PageInfo structure, containing npages * 16K PageInfos
+	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -276,7 +292,6 @@ x64_vm_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region or page_insert
 	page_init();
-	// Adrian: check if ex1 is finished.
 	check_page_free_list(1);
 	check_page_alloc();
 
@@ -346,7 +361,7 @@ page_init(void)
 	//  1) Mark physical page 0 as in use.
 	//     This way we preserve the real-mode IDT and BIOS structures
 	//     in case we ever need them.  (Currently we don't, but...)
-	//  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)		* Adrian summerize: 1) page 0 in use, [0, PGSIZE)
+	//  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)		* 1) page 0 in use, [0, PGSIZE)
 	//     is free.															* 2) IO holes, from 0xA0000 - 0x100000 (pa!)
 	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM), which must		* 	0xA0000 is IOPHYSMEM, 0x100000 is EXTPHYSMEM
 	//     never be allocated.												* 3) initial boot page table, [BOOT_PAGE_TABLE_START, BOOT_PAGE_TABLE_END)
@@ -365,52 +380,58 @@ page_init(void)
 	struct PageInfo* last = NULL;
 	extern uintptr_t end_debug;
 	char*  first_free_page = (char *) boot_alloc(0);
-	uintptr_t iova_st = (uintptr_t)pa2page((physaddr_t)IOPHYSMEM);		// Adrian: try to distinguish kva and va:(
+	uintptr_t iova_st = (uintptr_t)pa2page((physaddr_t)IOPHYSMEM);
 	//uintptr_t bptva_st = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_START);
 	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
 	
-	// Adrian: for debug
+	#ifdef DEBUG
+	cprintf("[DEBUG]\n");
 	cprintf("  end_debug\t%08x (virt)\n", end_debug);
-	cprintf("  BOOT_PAGE_TABLE_START\t%08x (virt)\n", BOOT_PAGE_TABLE_START);	// Adrian: this should not be virtual address!!!
+	cprintf("  BOOT_PAGE_TABLE_START\t%08x (virt)\n", BOOT_PAGE_TABLE_START);	// Should not be virtual address!!!
 	cprintf("  BOOT_PAGE_TABLE_END\t%08x (virt)\n", BOOT_PAGE_TABLE_END);
 	cprintf("  pages[0]\t%08x (pointer addr) %08x (page kva)\n", &pages[0], (uintptr_t)page2kva(&pages[0]));
 	cprintf("  pages[1]\t%08x (pointer addr) %08x (page kva)\n", &pages[1], (uintptr_t)page2kva(&pages[1]));
 	cprintf("  pages[2]\t%08x (pointer addr) %08x (page kva)\n", &pages[2], (uintptr_t)page2kva(&pages[2]));
-	cprintf("  pages[%d]\t%08x (pointer addr) %08x (page kva)\n", npages, &pages[npages-1], (uintptr_t)page2kva(&pages[npages-1]));	// Adrian: something is wrong here.
+	cprintf("  pages[%d]\t%08x (pointer addr) %08x (page kva)\n", npages, &pages[npages-1], (uintptr_t)page2kva(&pages[npages-1]));
 	cprintf("  npages_basemem is: %08u\n", npages_basemem);
 	cprintf("  iova_st\t%08x (virt)\n\n", (uintptr_t)iova_st);
+	#endif
 	
-	for (i = 0; i < npages; i++) {		// Adrian: spent so much time on this bullshit!
+	// @@@ Marks all physical pages as free except 4 cases indicated above
+	for (i = 0; i < npages; i++) {
 		if((i == 0)
 			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)page2kva(&pages[i]) < (uintptr_t)first_free_page)
 			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
-			//|| (uintptr_t)page2kva(&pages[i]) >= iova_st && (uintptr_t)page2kva(&pages[i]) < end_debug)
-			//|| (uintptr_t)page2kva(&pages[i]) >= bptva_st && (uintptr_t)page2kva(&pages[i]) < bptva_en)
 		{
-			// Adrian: for debug
-			//cprintf("pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
-			
+			#ifdef DEBUG
+			// cprintf("[DEBUG] pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
+			#endif
+			// @@@ pp_ref = 1: Page Not Available on the free page list
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
 		}
 		else
 		{
+			// @@@ pp_ref = 0: Page Available on the free page list
 			pages[i].pp_ref = 0;
-			pages[i].pp_link = NULL;		// Adrian: pp_link means next page on the free page list.
+			pages[i].pp_link = NULL;
 			if(last)
 				last->pp_link = &pages[i];
 			else
-				page_free_list = &pages[i];		// Adrian: else will only execute at the first time, point page_free_list to the first free page.
-			last = &pages[i];		// Adrian: pointer last will always point to the last page.
+				// @@@ Execute only once at first, when pointing page_free_list to the first free page
+				page_free_list = &pages[i];
+			// @@@ Always points to the last page
+			last = &pages[i];
 		}
 	}
-	// Adrian: for debug
-	cprintf("page_init: initialization finished!\n\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG] Page_init(): initialization finished!\n\n");
 	uint64_t err_pp = 0x800432fff0;
 	struct PageInfo* errpp = (struct PageInfo*)err_pp;
-	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	cprintf("[DEBUG] errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
 	errpp = errpp->pp_link;
-	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	cprintf("[DEBUG] errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	#endif
 }
 
 //
@@ -429,20 +450,26 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
-	// Adrian: for debug
-	cprintf("page_alloc: start!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG] page_alloc(): start!\n");
+	#endif
+	
 	struct PageInfo *newp;
 	newp = page_free_list;
 	if (newp == NULL)
 	{
-		cprintf("page_alloc: run out of memory!\n");
+		#ifdef DEBUG
+		cprintf("[DEBUG] page_alloc(): running out of memory!\n");
+		#endif
 		return NULL;
 	}
 	else
 	{
+		// @@@ Initialize the new page if required
 		if (alloc_flags & ALLOC_ZERO)
-			memset(page2kva(newp), 0, PGSIZE);		// Adrian: initialize the new page if required
-		page_free_list = page_free_list->pp_link;	// Adrian: move pointer to the next free page
+			memset(page2kva(newp), 0, PGSIZE);
+		// @@@ Move pointer to the next free page
+		page_free_list = page_free_list->pp_link;
 		newp->pp_link = NULL;
 		return newp;
 	}
@@ -469,8 +496,10 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
-	// Adrian: for debug
-	cprintf("page_free: start!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG] page_free(): start!\n");
+	#endif
+	
 	if (pp->pp_ref!=0 || pp->pp_link != NULL)
 		panic("page_free: this page can not be freed!\n");
 	
@@ -703,8 +732,9 @@ check_page_free_list(bool only_low_memory)
 	}
 
 	assert(nfree_extmem > 0);
-	// Adrian: for debug
-	cprintf("check_page_free_list: check page free memory passed!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG] check_page_free_list(): check page free memory passed!\n");
+	#endif
 }
 
 
@@ -725,24 +755,20 @@ check_page_alloc(void)
 	// the free list, try to make sure it
 	// eventually causes trouble.
 	
-	// Adrian: for debug
-	/*uint64_t err_pp = 0x800432fff0;
-	struct PageInfo* errpp = (struct PageInfo*)err_pp;
-	cprintf("\n  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
-	errpp = errpp->pp_link;
-	cprintf("  errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));*/
-	
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {
-		// Adrian: for debug
-		//if ((uint64_t)pp0==0x800432fff0 || (uint64_t)pp0==0x8004330000)
-		//{
-			//cprintf("  pp0\t%08x (pointer addr) %08x %08x (page kva)\n", pp0, pp0->pp_link, (uintptr_t)page2kva(pp0));
-		//}
+		#ifdef DEBUG
+		if ((uint64_t)pp0==0x800432fff0 || (uint64_t)pp0==0x8004330000)
+		{
+			//cprintf("[DEBUG] pp0\t%08x (pointer addr) %08x %08x (page kva)\n", pp0, pp0->pp_link, (uintptr_t)page2kva(pp0));
+		}
+		#endif
 		memset(page2kva(pp0), 0x97, PGSIZE);
 	}
-	// Adrian: for debug
-	cprintf("check free page finished!\n");
-
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG] Check free page finished!\n");
+	#endif
+	
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {
 		// check that we didn't corrupt the free list itself
 		assert(pp0 >= pages);
