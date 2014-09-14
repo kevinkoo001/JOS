@@ -432,6 +432,9 @@ page_init(void)
 	errpp = errpp->pp_link;
 	cprintf("[DEBUG] errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
 	#endif
+	cprintf("[DEBUG] First_free_page addr is: %08x (Physical addr: %08x)\n", first_free_page, PADDR(first_free_page));
+	cprintf("[DEBUG] Boot PML4E is: %08x (Physical addr: %08x) \n", boot_pml4e, PADDR(boot_pml4e));
+	cprintf("[DEBUG] PDPE: %08x \n", pml4e_walk(boot_pml4e, 0x0, 1));
 }
 
 //
@@ -546,7 +549,49 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 {
-	return NULL;
+	pte_t *pte = NULL;
+	pdpe_t *pdpe = NULL;
+	struct PageInfo* pageNew;
+	bool allocSuccess = false;
+	
+	if(pml4e == NULL)
+		return NULL;
+	
+	// @@@ Get the addr of pml4 entry in offset 'va'
+	pml4e = &pml4e[PML4(va)];
+	#ifdef DEBUG
+	cprintf("[DEBUG-] VA:%x\n", va);
+	cprintf("[DEBUG-] PML4: %x, PML4(va):%x, *pml4e:%x \n", pml4e, PML4(va), *pml4e);
+	#endif
+	pdpe = (pdpe_t *) KADDR(PTE_ADDR(*pml4e));
+	
+	// @@@ If PDPE does not exist and create == false, then return NULL
+	if(pdpe == NULL && create == false) {
+		return NULL;
+	}
+	// @@@ Allocate a new PDPE page 
+	else {
+		allocSuccess = true;
+		pageNew = page_alloc(0);	// Clear the page
+		if (pageNew == NULL)
+			return NULL;
+		pageNew->pp_ref++;	// reference ctr incremented by 1
+		pml4e[PML4(va)] = page2pa(pageNew);
+		pml4e[PML4(va)] |= PTE_USER;
+		pdpe = (pdpe_t *) KADDR(PTE_ADDR(*pml4e));
+		#ifdef DEBUG
+		cprintf("[DEBUG-] pdpe: %x, *pdpe %x \n" , pdpe, *pdpe);
+		#endif
+	}
+	
+	pte = pdpe_walk(pdpe, va, create);
+	if(pte == NULL && allocSuccess == true) {
+		page_free(pageNew);
+		*pml4e = 0;
+		return NULL;
+	}
+	
+	return pte;
 }
 
 
@@ -555,20 +600,106 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 // It calls the pgdir_walk which returns the page_table entry pointer.
 // Hints are the same as in pml4e_walk
 pte_t *
-pdpe_walk(pdpe_t *pdpe,const void *va,int create){
-
-	return NULL;
+pdpe_walk(pdpe_t *pdpe,const void *va,int create)
+{
+	pte_t *pte = NULL;
+	pde_t *pde = NULL;
+	struct PageInfo* pageNew;
+	bool allocSuccess = false;
+	
+	if(pdpe == NULL)
+		return NULL;
+	
+	// @@@ Get the addr of pdpe entry in offset 'va'
+	pdpe = &pdpe[PDPE(va)];
+	#ifdef DEBUG
+	cprintf("[DEBUG-] VA:%x\n", va);
+	cprintf("[DEBUG-] pdpe: %x, PDPE(va):%x, *pdpe:%x \n", pdpe, PDPE(va), *pdpe);
+	#endif
+	pde = (pde_t *) KADDR(PTE_ADDR(*pdpe));
+	
+	// @@@ If PDE does not exist and create == false, then return NULL
+	if(pde == NULL && create == false) {
+		return NULL;
+	}
+	// @@@ Allocate a new PDPE page 
+	else {
+		allocSuccess = true;
+		pageNew = page_alloc(0);	// Clear the page
+		if (pageNew == NULL)
+			return NULL;
+		pageNew->pp_ref++;	// reference ctr incremented by 1
+		pdpe[PDPE(va)] = page2pa(pageNew);
+		pdpe[PDPE(va)] |= PTE_USER;
+		pde = (pde_t *) KADDR(PTE_ADDR(*pdpe));
+		#ifdef DEBUG
+		cprintf("[DEBUG-] pde: %x, *pde %x \n" , pde, *pde);
+		#endif
+	}
+	
+	pte = pgdir_walk(pde, va, create);
+	if(pte == NULL && allocSuccess == true) {
+		page_free(pageNew);
+		*pdpe = 0;
+		return NULL;
+	}
+	
+	return pte;
+	
 }
 // Given 'pgdir', a pointer to a page directory, pgdir_walk returns
 // a pointer to the page table entry (PTE). 
 // The programming logic and the hints are the same as pml4e_walk
 // and pdpe_walk.
 
-	pte_t *
+pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-	return NULL;
+	pte_t *pte = NULL;
+	pte_t *pte_base = NULL;
+	struct PageInfo* pageNew;
+	bool allocSuccess = false;
+	
+	if(pgdir == NULL)
+		return NULL;
+	
+	// @@@ Get the addr of pgdir entry in offset 'va'
+	pgdir = &pgdir[PDX(va)];
+	#ifdef DEBUG
+	cprintf("[DEBUG-] VA:%x\n", va);
+	cprintf("[DEBUG-] pgdir: %x, PDX(va):%x, *pgdir:%x \n", pgdir, PDX(va), *pgdir);
+	#endif
+	pte_base = (pte_t*) KADDR(PTE_ADDR(*pgdir));
+	
+	// @@@ If PTE does not exist and create == false, then return NULL
+	if(pte == NULL && create == false) {
+		return NULL;
+	}
+	// @@@ Allocate a new PTE page 
+	else {
+		allocSuccess = true;
+		pageNew = page_alloc(0);	// Clear the page
+		if (pageNew == NULL)
+			return NULL;
+		pageNew->pp_ref++;	// reference ctr incremented by 1
+		pgdir[PDX(va)] = page2pa(pageNew);
+		pgdir[PDX(va)] |= PTE_USER;
+		pte_base = (pte_t*) KADDR(PTE_ADDR(*pgdir));
+		#ifdef DEBUG
+		cprintf("[DEBUG-] pte_base: %x, *pte_base %x \n" , pte_base, *pte_base);
+		#endif
+	}
+	
+	pte = pte_base + PTX(va);
+	if(pte == NULL && allocSuccess == true) {
+		page_free(pageNew);
+		*pgdir = 0;
+		return NULL;
+	}
+	
+	return pte;
+	
 }
 
 //
@@ -900,24 +1031,29 @@ check_va2pa(pml4e_t *pml4e, uintptr_t va)
 	pdpe_t *pdpe;
 	pde_t *pde;
 	// cprintf("%x", va);
+	
 	pml4e = &pml4e[PML4(va)];
 	// cprintf(" %x %x " , PML4(va), *pml4e);
 	if(!(*pml4e & PTE_P))
 		return ~0;
+		
 	pdpe = (pdpe_t *) KADDR(PTE_ADDR(*pml4e));
 	// cprintf(" %x %x " , pdpe, *pdpe);
 	if (!(pdpe[PDPE(va)] & PTE_P))
 		return ~0;
+		
 	pde = (pde_t *) KADDR(PTE_ADDR(pdpe[PDPE(va)]));
 	// cprintf(" %x %x " , pde, *pde);
 	pde = &pde[PDX(va)];
 	if (!(*pde & PTE_P))
 		return ~0;
+		
 	pte = (pte_t*) KADDR(PTE_ADDR(*pde));
 	// cprintf(" %x %x " , pte, *pte);
 	if (!(pte[PTX(va)] & PTE_P))
 		return ~0;
 	// cprintf(" %x %x\n" , PTX(va),  PTE_ADDR(pte[PTX(va)]));
+	
 	return PTE_ADDR(pte[PTX(va)]);
 }
 
