@@ -309,6 +309,7 @@ x64_vm_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(pml4e, UPAGES, ROUNDUP(sizeof(struct PageInfo) * npages, PGSIZE), PADDR(pages), PTE_U);
 
 
 	//////////////////////////////////////////////////////////////////////
@@ -322,6 +323,8 @@ x64_vm_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+	boot_map_region(pml4e, KSTACKTOP-PTSIZE, PTSIZE-KSTKSIZE, PADDR(bootstack+KSTKSIZE), 0);	// @@@ we don't give any permission to this piece of memory
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE. We have detected the number
@@ -329,7 +332,9 @@ x64_vm_init(void)
 	// Ie.  the VA range [KERNBASE, npages*PGSIZE) should map to
 	//      the PA range [0, npages*PGSIZE - KERNBASE)
 	// Permissions: kernel RW, user NONE
-	// Your code goes here: 
+	// Your code goes here:
+	boot_map_region(pml4e, KERNBASE, (npages * PGSIZE), 0x0, PTE_W);
+	
 	// Check that the initial page directory has been set up correctly.
 	check_boot_pml4e(boot_pml4e);
 
@@ -699,7 +704,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 //
 // Map [va, va+size) of virtual address space to physical [pa, pa+size)
 // in the page table rooted at pml4e.  Size is a multiple of PGSIZE.
-// Use permission bits perm|PTE_P for the entries.
+// Use permission bits perm|PTE_P for the entries.							// @@@ here might be wrong
 //
 // This function is only intended to set up the "static" mappings
 // above UTOP. As such, it should *not* change the pp_ref field on the
@@ -710,17 +715,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-	/*size_t i = size;
-	pte_t pte[size];
-	struct PageInfo* pp = pa2page(pa);
-	if(la >= UTOP) {
-		for(i=0; i<size; i++)
-		{
-			pte_t pte[i] = pml4e_walk(pml4e, (char*)(la+i), 1);
-		}
-		
-		cprintf("pte: %x\n", pte);
-	}*/
+	uintptr_t top = ROUNDUP(la+size, PGSIZE);
+	char *va_temp, *pa_temp;
+	for(va_temp = (char*)la, pa_temp = (char*)pa; (uintptr_t)va_temp < top; va_temp+=PGSIZE, pa_temp+=PGSIZE)
+	{
+		pte_t *pte = pml4e_walk(pml4e, (char*)va_temp, 1);
+		*pte = (uintptr_t)pa_temp | perm | PTE_P;
+	}
+	cprintf("boot_map_region: map [%x, %x) to [%x, %x) success!\n", la, la+size, pa, pa+size);
 }
 
 //
@@ -1017,7 +1019,7 @@ check_boot_pml4e(pml4e_t *pml4e)
 	// check pages array
 	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
 	for (i = 0; i < n; i += PGSIZE) {
-		cprintf("%x %x %x\n",i,check_va2pa(pml4e, UPAGES + i), PADDR(pages) + i);
+		//cprintf("%x %x %x\n",i,check_va2pa(pml4e, UPAGES + i), PADDR(pages) + i);
 		assert(check_va2pa(pml4e, UPAGES + i) == PADDR(pages) + i);
 	}
 
