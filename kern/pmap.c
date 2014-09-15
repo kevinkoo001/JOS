@@ -324,7 +324,8 @@ x64_vm_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
 	boot_map_region(pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
-	boot_map_region(pml4e, KSTACKTOP-PTSIZE, PTSIZE-KSTKSIZE, PADDR(bootstack+KSTKSIZE), 0);	// @@@ we don't give any permission to this piece of memory
+	// @@@ we don't give any permission to this piece of memory. Update: according to TA, do not allocate this.
+	//boot_map_region(pml4e, KSTACKTOP-PTSIZE, PTSIZE-KSTKSIZE, PADDR(bootstack+KSTKSIZE), 0);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE. We have detected the number
