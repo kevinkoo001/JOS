@@ -27,15 +27,15 @@
 // use PGADDR(PML4(la), PDPE(la), PDX(la), PTX(la), PGOFF(la)).
 
 // page number field of address
-#define PPN(pa)		(((uintptr_t) (pa)) >> PTXSHIFT)
+#define PPN(pa)		(((uintptr_t) (pa)) >> PTXSHIFT)		// Adrian: all definitions are right under. PTXSHIFT is 12.
 #define VPN(la)		PPN(la)		// used to index into vpt[]
 #define PGNUM(la)	PPN(la)		// used to index into vpt[]
 
 // page directory index
-#define PDX(la)		((((uintptr_t) (la)) >> PDXSHIFT) & 0x1FF)
+#define PDX(la)		((((uintptr_t) (la)) >> PDXSHIFT) & 0x1FF)		// Adrian: 1FF = 0001 1111 1111 pull 9 bits of it
 #define VPD(la)		(((uintptr_t) (la)) >> PDXSHIFT)		// used to index into vpd[]
 #define VPDPE(la)   (((uintptr_t) (la)) >> PDPESHIFT)
-#define VPML4E(la)  (((uintptr_t) (la)) >> PML4SHIFT)
+#define VPML4E(la)  (((uintptr_t) (la)) >> PML4SHIFT)		// Adrian: this doesn't make sense. VPML4E(la) should equal to PML4(la)
 
 #define PML4(la)  ((((uintptr_t) (la)) >> PML4SHIFT) & 0x1FF)
 
