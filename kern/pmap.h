@@ -53,7 +53,7 @@ void    x64_vm_init();
 void	page_init(void);
 struct PageInfo * page_alloc(int alloc_flags);
 void	page_free(struct PageInfo *pp);
-int	page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm);
+int		page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm);
 void	page_remove(pml4e_t *pml4e, void *va);
 struct PageInfo *page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store);
 void	page_decref(struct PageInfo *pp);

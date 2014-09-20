@@ -43,25 +43,25 @@ struct Segdesc gdt[] =
 	SEG_NULL,
 
 	// 0x8 - kernel code segment
-	[GD_KT >> 3] = SEG64(STA_X | STA_R, 0x0, 0xffffffff,0),
+	[GD_KT >> 3] = SEG64(STA_X | STA_R, 0x0, 0xffffffff,0),		// @@@ GD_KT >> 3 is 1
 
 	// 0x10 - kernel data segment
-	[GD_KD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,0),
+	[GD_KD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,0),				// @@@ GD_KD >> 3 is 2
 
 	// 0x18 - user code segment
-	[GD_UT >> 3] = SEG64(STA_X | STA_R, 0x0, 0xffffffff,3),
+	[GD_UT >> 3] = SEG64(STA_X | STA_R, 0x0, 0xffffffff,3),		// @@@ GD_UT >> 3 is 3
 
 	// 0x20 - user data segment
-	[GD_UD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,3),
+	[GD_UD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,3),				// @@@ GD_UD >> 3 is 4
 
 	// 0x28 - tss, initialized in trap_init_percpu()
-	[GD_TSS0 >> 3] = SEG_NULL,
+	[GD_TSS0 >> 3] = SEG_NULL,									// @@@ GD_TSS0 >> 3 is 5
 	
 	[6] = SEG_NULL //last 8 bytes of the tss since tss is 16 bytes long
 };
 
 struct Pseudodesc gdt_pd = {
-	sizeof(gdt) - 1, (unsigned long) gdt
+	sizeof(gdt) - 1, (unsigned long) gdt	// @@@ used for loading descriptor table
 };
 //
 // Converts an envid to an env pointer.
@@ -120,6 +120,19 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
+	size_t i;
+	struct Env* last = NULL;
+	for (i = 0; i < NENV; i++) {
+		envs[i].env_status = ENV_FREE;
+		envs[i].env_id = 0;
+		envs[i].env_link = NULL;
+		if (last)
+			last->env_link = &envs[i];
+		else
+			env_free_list = &envs[i];
+		last = &envs[i];
+		
+	}
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -168,7 +181,7 @@ env_setup_vm(struct Env *e)
 	if (!(p = page_alloc(0)))
 		return -E_NO_MEM;
 
-	// Now, set e->env_pgdir and initialize the page directory.
+	// Now, set e->env_pml4e and initialize the page directory.
 	//
 	// Hint:
 	//    - The VA space of all envs is identical above UTOP
@@ -186,11 +199,29 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
+	e->env_pml4e = page2kva(p);
+	e->env_cr3 = (physaddr_t)page2kva(p);
+	p->pp_ref++;
+	
+	// boot_map_region(e->env_pml4e, KERNBASE, (npages * PGSIZE), 0x0, PTE_W);
+	uintptr_t la = KERNBASE;
+	uintptr_t pa = 0x0;
+	size_t size = (npages * PGSIZE);
+	uintptr_t top = ROUNDUP(la+size, PGSIZE);
+	char *va_temp, *pa_temp;
+	for(va_temp = (char*)la, pa_temp = (char*)pa; (uintptr_t)va_temp < top; va_temp+=PGSIZE, pa_temp+=PGSIZE)
+	{
+		struct PageInfo *pp_temp = pa2page((physaddr_t)pa_temp);
+		if (page_insert(e->env_pml4e, pp_temp, va_temp, 0) < 0)		// @@@ check perm of this for user enviroment
+			return -E_NO_MEM;
+	}
+	
+	// @@@ [TODO] Need to initialize to copy all NPDENTRIES?? (i.e pd/pdp/pt )
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
 	e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
-
+	
 	return 0;
 }
 
@@ -268,6 +299,22 @@ static void
 region_alloc(struct Env *e, void *va, size_t len)
 {
 	// LAB 3: Your code here.
+	uintptr_t va_aligned = ROUNDDOWN((uintptr_t)va, PGSIZE);
+	uintptr_t va_len_aligned = (uintptr_t)ROUNDUP((char*)va + len, PGSIZE);
+	int size = (va_len_aligned - va_aligned) / PGSIZE;
+	int i;
+	
+	for (i=0; i<size; i++) {
+		struct PageInfo* pp = page_alloc(0);
+		if (pp == NULL)
+			panic("region_alloc: %e", pp);
+		// @@@ [TODO] Needs to check the permission
+		int result = page_insert(e->env_pml4e, pp, (void*)va_aligned, PTE_USER);
+		if (result < 0)
+			panic("region_alloc: %e", result);
+		va_aligned += PGSIZE;
+	}
+	
 	// (But only if you need it for load_icode.)
 	//
 	// Hint: It is easier to use region_alloc if the caller can pass
