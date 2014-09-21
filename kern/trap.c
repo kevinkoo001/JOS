@@ -70,6 +70,8 @@ trap_init(void)
     idt_pd.pd_base = (uint64_t)idt;
 	// Per-CPU setup
 	trap_init_percpu();
+	
+	cprintf("trap_init: done!\n");
 }
 
 // Initialize and load the per-CPU TSS and IDT
