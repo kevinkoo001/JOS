@@ -24,6 +24,22 @@ static struct Trapframe *last_tf;
  * shifted function addresses can't be represented in relocation records.)
  */
 struct Gatedesc idt[256] = { { 0 } };
+/* @@@ copy to here
+// Gate descriptors for interrupts and traps
+struct Gatedesc {
+	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
+	unsigned gd_ss : 16;         // segment selector
+	unsigned gd_ist : 3;        // # args, 0 for interrupt/trap gates
+	unsigned gd_rsv1 : 5;        // reserved(should be zero I guess)
+	unsigned gd_type : 4;        // type(STS_{TG,IG32,TG32})
+	unsigned gd_s : 1;           // must be 0 (system)
+	unsigned gd_dpl : 2;         // descriptor(meaning new) privilege level
+	unsigned gd_p : 1;           // Present
+	unsigned gd_off_31_16 : 16;  // high bits of offset in segment
+    uint32_t gd_off_32_63;       
+    uint32_t gd_rsv2;                   
+};
+*/
 struct Pseudodesc idt_pd = {0,0};
 
 
@@ -59,6 +75,27 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+// @@@ introduce all former generated functions to here
+extern void handle_divide();
+extern void handle_debug();
+extern void handle_nmi();
+extern void handle_brkpt();
+extern void handle_oflow();
+extern void handle_bound();
+extern void handle_illop();
+extern void handle_device();
+extern void handle_dblflt();
+extern void handle_tss();
+extern void handle_segnp();
+extern void handle_stack();
+extern void handle_gpflt();
+extern void handle_pgflt();
+extern void handle_fperr();
+extern void handle_align();
+extern void handle_mchk();
+extern void handle_simderr();
+extern void handle_syscall();
+extern void handle_default();
 
 void
 trap_init(void)
@@ -66,6 +103,27 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	SETGATE(idt[T_DIVIDE], 0, GD_KT, handle_divide, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, handle_debug, 0);
+	SETGATE(idt[T_NMI], 0, GD_KT, handle_nmi, 0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, handle_brkpt, 3);	// @@@ this int doesn't need kernel privilege
+	SETGATE(idt[T_OFLOW], 0, GD_KT, handle_oflow, 0);
+	SETGATE(idt[T_BOUND], 0, GD_KT, handle_bound, 0);
+	SETGATE(idt[T_ILLOP], 0, GD_KT, handle_illop, 0);
+	SETGATE(idt[T_DEVICE], 0, GD_KT, handle_device, 0);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, handle_dblflt, 0);
+	SETGATE(idt[T_TSS], 0, GD_KT, handle_tss, 0);
+	SETGATE(idt[T_SEGNP], 0, GD_KT, handle_segnp, 0);
+	SETGATE(idt[T_STACK], 0, GD_KT, handle_stack, 0);
+	SETGATE(idt[T_GPFLT], 0, GD_KT, handle_gpflt, 0);
+	SETGATE(idt[T_PGFLT], 0, GD_KT, handle_pgflt, 0);
+	SETGATE(idt[T_FPERR], 0, GD_KT, handle_fperr, 0);
+	SETGATE(idt[T_ALIGN], 0, GD_KT, handle_align, 0);
+	SETGATE(idt[T_MCHK], 0, GD_KT, handle_mchk, 0);
+	SETGATE(idt[T_SIMDERR], 0, GD_KT, handle_simderr, 0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 0);
+	SETGATE(idt[T_DEFAULT], 0, GD_KT, handle_default, 0);
+	
     idt_pd.pd_lim = sizeof(idt)-1;
     idt_pd.pd_base = (uint64_t)idt;
 	// Per-CPU setup
@@ -150,6 +208,28 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	
+	// @@@ Ex5.
+	if (tf->tf_trapno == T_PGFLT)
+	{
+		page_fault_handler(tf);
+		return;
+	}
+	
+	// @@@ Ex6.
+	else if (tf->tf_trapno == T_BRKPT)
+	{
+		monitor(tf);
+		return;
+	}
+	
+	// @@@ Ex7.
+	else if (tf->tf_trapno == T_SYSCALL)
+	{
+		cprintf("SYSTEM CALL\n");
+		tf->tf_regs.reg_rax = syscall(tf->tf_regs.reg_rax, tf->tf_regs.reg_rdx, tf->tf_regs.reg_rcx, tf->tf_regs.reg_rbx, tf->tf_regs.reg_rdi, tf->tf_regs.reg_rsi);
+		return;
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);

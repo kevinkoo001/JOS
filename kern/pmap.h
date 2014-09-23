@@ -64,7 +64,7 @@ int	user_mem_check(struct Env *env, const void *va, size_t len, int perm);
 void	user_mem_assert(struct Env *env, const void *va, size_t len, int perm);
 
 // @@@ put boot_mag_region into header file
-void	boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int perm);
+//void	boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int perm);
 
 static inline ppn_t
 page2ppn(struct PageInfo *pp)
