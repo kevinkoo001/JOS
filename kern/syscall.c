@@ -21,7 +21,9 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
-	//user_mem_assert();
+	// user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
+	// cprintf("sys_cputs: curenv - %x, *s - %s, len - %d\n", curenv, *s, len);
+	user_mem_assert(curenv, (char*)s, len, 0);
 
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);

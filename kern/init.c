@@ -51,8 +51,13 @@ i386_init(void)
 #else
 	// Touch all you want.
 	cprintf("Before\n");
-	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	// ENV_CREATE(user_hello, ENV_TYPE_USER);
+	// ENV_CREATE(user_breakpoint, ENV_TYPE_USER);
+	// ENV_CREATE(user_buggyhello, ENV_TYPE_USER);
+	// ENV_CREATE(user_buggyhello2, ENV_TYPE_USER);
+	ENV_CREATE(user_evilhello, ENV_TYPE_USER);
 	cprintf("After\n");
+
 #endif // TEST*
 
 	// We only have one user environment for now, so just run it.

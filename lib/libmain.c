@@ -13,7 +13,7 @@ libmain(int argc, char **argv)
 {
 	// set thisenv to point at our Env structure in envs[].
 	// LAB 3: Your code here.
-	thisenv = 0;
+	// thisenv = 0;
 	//uint64_t envid = sys_getenvid();
 	//envid2env(envid, &thisenv, 0);
 	thisenv = &envs[ENVX(sys_getenvid())];

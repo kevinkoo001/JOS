@@ -725,7 +725,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 //
 // Map [va, va+size) of virtual address space to physical [pa, pa+size)
 // in the page table rooted at pml4e.  Size is a multiple of PGSIZE.
-// Use permission bits perm|PTE_P for the entries.							// @@@ here might be wrong
+// Use permission bits perm|PTE_P for the entries.
 //
 // This function is only intended to set up the "static" mappings
 // above UTOP. As such, it should *not* change the pp_ref field on the
@@ -884,6 +884,35 @@ static uintptr_t user_mem_check_addr;
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	// @@@ Get page-aligned addr of [va, va+len) range
+	uintptr_t vaCurrent = (uintptr_t)ROUNDDOWN(va, PGSIZE);
+	uintptr_t vaLast = (uintptr_t)ROUNDUP(va + len, PGSIZE);
+
+	//cprintf("user_mem_check(): vaCurrent - %x, vaLast - %x\n", vaCurrent, vaLast);
+	
+	perm = perm | PTE_P;
+	pte_t* pte = NULL;
+	
+	for( ;vaCurrent < vaLast; vaCurrent += PGSIZE) {
+		// @@@ Set the current va as the first erroneous va
+		user_mem_check_addr = vaCurrent;
+		
+		// @@@ When user program can't access this range of address
+		if(vaCurrent >= ULIM) {
+			return -E_FAULT;
+		}
+		else {
+			// @@@ Get pte with current env_pml4e
+			pte = pml4e_walk(env->env_pml4e, (void*)vaCurrent, 0);
+			
+			// @@@ Error when either pte is null or incorrect permission from page table is found
+			if(!pte || (*pte & perm) != perm)
+				return -E_FAULT;
+		}
+	}
+
+	// @@@ All other cases:
+	// @@@ regarded as successful access to the addr of the [va, va+len) range
 	return 0;
 
 }
@@ -898,6 +927,8 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	void
 user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
 {
+	//int result = user_mem_check(env, va, len, perm | PTE_U);
+	//cprintf("usr_mem_assert(): va - %x, perm - %d\n", va, perm);
 	if (user_mem_check(env, va, len, perm | PTE_U) < 0) {
 		cprintf("[%08x] user_mem_check assertion failure for "
 			"va %08x\n", env->env_id, user_mem_check_addr);
