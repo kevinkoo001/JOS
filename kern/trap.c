@@ -226,10 +226,10 @@ trap_dispatch(struct Trapframe *tf)
 	// @@@ Ex7.
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
-		cprintf("SYSTEM CALL\n");
+		cprintf("SYSTEM CALL syscallno: %x\n", tf->tf_regs.reg_rax);
 		//cprintf("Before system call, rax %x\n", tf->tf_regs.reg_rax);
 		tf->tf_regs.reg_rax = syscall(tf->tf_regs.reg_rax, tf->tf_regs.reg_rdx, tf->tf_regs.reg_rcx, tf->tf_regs.reg_rbx, tf->tf_regs.reg_rdi, tf->tf_regs.reg_rsi);
-		cprintf("After system call, rax %x\n", tf->tf_regs.reg_rax);
+		//cprintf("After system call, rax %x\n", tf->tf_regs.reg_rax);
 		return;
 	}
 

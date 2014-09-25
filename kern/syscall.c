@@ -74,14 +74,14 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	
 	//panic("syscall not implemented");
 	uint64_t ret;
-	cprintf("Before switch! syscallno %x\n", syscallno);
+	//cprintf("Before switch! syscallno %x\n", syscallno);
 	switch (syscallno) {
 	case SYS_cputs:
-		cprintf("Into SYS_cputs!\n");
+		//cprintf("Into SYS_cputs!\n");
 		sys_cputs((char*)a1, a2);
 		return 0;
 		//break;
-	/*case SYS_cgetc:
+	case SYS_cgetc:
 		ret = sys_cgetc();
 		return ret;
 		//break;
@@ -93,7 +93,7 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 		if(sys_env_destroy(a1) == 0)
 			return 0;
 		return -E_NO_SYS;
-		//break;*/
+		//break;
 	case NSYSCALLS:
 		return -E_INVAL;
 	default:

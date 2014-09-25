@@ -86,11 +86,17 @@
 
 _alltraps:
 	
-	xorq %rax,%rax
-	movw %ds, %ax
-	push %rax
-	movw %es, %ax
-	push %rax
+	/*xorq %rax,%rax
+	 *movw %ds, %ax
+	 *push %ds
+	 *movw %es, %ax
+	 *push %es
+	 */ // this is all wrong, I cannot mess rax
+	subq $16, %rsp
+	movq $0, 0(%rsp)
+	movq $0, 8(%rsp)
+	movw %es, 0(%rsp)
+	movw %ds, 8(%rsp)
 	PUSHA
 	
 	movw $GD_KD, %ax
