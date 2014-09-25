@@ -72,11 +72,12 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	// Return any appropriate return value.
 	// LAB 3: Your code here.
 	
-	panic("syscall not implemented");
+	//panic("syscall not implemented");
 	uint64_t ret;
-
+	cprintf("Before switch! syscallno %x\n", syscallno);
 	switch (syscallno) {
 	case SYS_cputs:
+		cprintf("Into SYS_cputs!\n");
 		sys_cputs((char*)a1, a2);
 		return 0;
 		//break;

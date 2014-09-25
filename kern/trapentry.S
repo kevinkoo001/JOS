@@ -72,8 +72,8 @@
 	TRAPHANDLER(handle_align, T_ALIGN)
 	TRAPHANDLER_NOEC(handle_mchk, T_MCHK)
 	TRAPHANDLER_NOEC(handle_simderr, T_SIMDERR)
-	TRAPHANDLER(handle_syscall, T_SYSCALL)
-	TRAPHANDLER(handle_default, T_DEFAULT)
+	TRAPHANDLER_NOEC(handle_syscall, T_SYSCALL)
+	TRAPHANDLER_NOEC(handle_default, T_DEFAULT)
 
 
 
@@ -100,4 +100,5 @@ _alltraps:
 	// @@@ http://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64/
 	movq %rsp, %rdi
 	call trap
+
 

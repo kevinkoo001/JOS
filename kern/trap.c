@@ -121,7 +121,7 @@ trap_init(void)
 	SETGATE(idt[T_ALIGN], 0, GD_KT, handle_align, 0);
 	SETGATE(idt[T_MCHK], 0, GD_KT, handle_mchk, 0);
 	SETGATE(idt[T_SIMDERR], 0, GD_KT, handle_simderr, 0);
-	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 3);	// @@@ watch permission!
 	SETGATE(idt[T_DEFAULT], 0, GD_KT, handle_default, 0);
 	
     idt_pd.pd_lim = sizeof(idt)-1;
@@ -227,7 +227,9 @@ trap_dispatch(struct Trapframe *tf)
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
 		cprintf("SYSTEM CALL\n");
+		//cprintf("Before system call, rax %x\n", tf->tf_regs.reg_rax);
 		tf->tf_regs.reg_rax = syscall(tf->tf_regs.reg_rax, tf->tf_regs.reg_rdx, tf->tf_regs.reg_rcx, tf->tf_regs.reg_rbx, tf->tf_regs.reg_rdi, tf->tf_regs.reg_rsi);
+		cprintf("After system call, rax %x\n", tf->tf_regs.reg_rax);
 		return;
 	}
 

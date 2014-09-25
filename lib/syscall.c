@@ -19,7 +19,7 @@ syscall(int num, int check, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	// The last clause tells the assembler that this can
 	// potentially change the condition codes and arbitrary
 	// memory locations.
-
+	
 	asm volatile("int %1\n"
 		: "=a" (ret)
 		: "i" (T_SYSCALL),
