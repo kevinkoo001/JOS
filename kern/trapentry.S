@@ -50,9 +50,8 @@
    pusha,popa so you will find these macros handy.
  */
  
-	/* whether to use error code found here:
+	/* whether or not to use error code found here:
 	 * www3.cs.stonybrook.edu/~porter/courses/cse506/f14/ref/i386/s09_10.htm
-	 * not sure what should be use in syscall and default
 	 */
 	TRAPHANDLER_NOEC(handle_divide, T_DIVIDE)
 	TRAPHANDLER_NOEC(handle_debug, T_DEBUG)
@@ -92,6 +91,7 @@ _alltraps:
 	 *movw %es, %ax
 	 *push %es
 	 */ // this is all wrong, I cannot mess rax
+	 
 	subq $16, %rsp
 	movq $0, 0(%rsp)
 	movq $0, 8(%rsp)
@@ -102,8 +102,10 @@ _alltraps:
 	movw $GD_KD, %ax
 	movw %ax, %ds
 	movw %ax, %es
+	
 	// @@@ move the first arg into rdi, as the struct Trapframe *tf
 	// @@@ http://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64/
+	
 	movq %rsp, %rdi
 	call trap
 

@@ -50,13 +50,19 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	cprintf("Before\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] i386_init(): Before entering user env! \n");
+	#endif
+	
 	// ENV_CREATE(user_hello, ENV_TYPE_USER);
 	// ENV_CREATE(user_breakpoint, ENV_TYPE_USER);
-	ENV_CREATE(user_buggyhello, ENV_TYPE_USER);
 	// ENV_CREATE(user_buggyhello2, ENV_TYPE_USER);
 	// ENV_CREATE(user_evilhello, ENV_TYPE_USER);
-	cprintf("After\n");
+	ENV_CREATE(user_buggyhello, ENV_TYPE_USER);
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] i386_init(): After exiting user env! \n");
+	#endif
 
 #endif // TEST*
 

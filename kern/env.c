@@ -120,14 +120,13 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
-	// @@@ similiar to page_init
+	// @@@ Initialize envs array similiar to page_init()
 	size_t i;
 	struct Env* last = NULL;
 	for (i = 0; i < NENV; i++) {
 		envs[i].env_status = ENV_FREE;
 		envs[i].env_id = 0;
 		envs[i].env_link = NULL;
-		// @@@ below I'm not sure if we need this
 		envs[i].env_parent_id = 0;
 		envs[i].env_runs = 0;
 		envs[i].env_pml4e = NULL;
@@ -143,8 +142,9 @@ env_init(void)
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
-	
-	cprintf("env_init: done!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_init(): done!\n");
+	#endif
 }
 
 // Load GDT and segment descriptors.
@@ -208,14 +208,14 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
-
-	memset(page2kva(p), 0, PGSIZE);		// @@@ [DEBUG] w/o this at first, resulting in a panic in pml4e_walk, which leads there is the entry in pml4 table because the last bit is one.
+	// @@@ [DEBUG] w/o this at first, resulting in a panic in pml4e_walk, which leads there is the entry in pml4 table because the last bit is one.
+	memset(page2kva(p), 0, PGSIZE);
 	e->env_pml4e = page2kva(p);
-	e->env_cr3 = (physaddr_t)page2pa(p);	// @@@ fix a major bug here
+	e->env_cr3 = (physaddr_t)page2pa(p);
 	p->pp_ref++;
-	
 
-	/* [DEBUG] This part seems wrong!!!!
+	/* 
+	[DEBUG] This part seems wrong!!!!
 	uintptr_t la = KERNBASE;
 	uintptr_t pa = 0x0;
 	size_t size = (npages * PGSIZE);
@@ -235,15 +235,16 @@ env_setup_vm(struct Env *e)
 	/*boot_map_region(e->env_pml4e, UPAGES, ROUNDUP(sizeof(struct PageInfo) * npages, PGSIZE), PADDR(pages), PTE_USER);
 	boot_map_region(e->env_pml4e, UENVS, ROUNDUP(sizeof(struct Env) * NENV, PGSIZE), PADDR(envs), PTE_USER);
 	boot_map_region(e->env_pml4e, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_USER);
-	boot_map_region(e->env_pml4e, KERNBASE, (npages * PGSIZE), 0x0, PTE_USER);*/
-	cprintf("env_setup_vm: env_cr3 %x\n", e->env_cr3);
+	boot_map_region(e->env_pml4e, KERNBASE, (npages * PGSIZE), 0x0, PTE_USER);
+	*/
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_setup_vm(): env_cr3 %x\n", e->env_cr3);
+	#endif
+	
 	for (i = PML4(UTOP); i < NPMLENTRIES; i++)
 		e->env_pml4e[i] = boot_pml4e[i];
 	
-	//memcpy(e->env_pml4e, boot_pml4e, PGSIZE);
-	
-	// @@@ [TODO] Need to initialize to copy all NPDENTRIES?? (i.e pd/pdp/pt )
-
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
 	e->env_pml4e[PML4(UVPT)] = e->env_cr3 | PTE_P | PTE_U;
@@ -272,8 +273,10 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// Allocate and set up the page directory for this environment.
 	if ((r = env_setup_vm(e)) < 0)
 		return r;
-	
-	cprintf("env_alloc: env_setup_vm done!\n");
+		
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_alloc(): env_setup_vm done!\n");
+	#endif
 
 	// Generate an env_id for this environment.
 	generation = (e->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
@@ -331,23 +334,26 @@ region_alloc(struct Env *e, void *va, size_t len)
 	uintptr_t va_aligned = ROUNDDOWN((uintptr_t)va, PGSIZE);
 	uintptr_t va_len_aligned = (uintptr_t)ROUNDUP((char*)va + len, PGSIZE);
 	int size = (va_len_aligned - va_aligned) / PGSIZE;
-	cprintf("region_alloc: va %x va_aligned %x len %x va_len_aligned %x size %x\n", va, va_aligned, len, va_len_aligned, size);
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] region_alloc(): va %x va_aligned %x len %x va_len_aligned %x size %x\n", va, va_aligned, len, va_len_aligned, size);
+	#endif
+	
 	int i;
 	
-	//lcr3(e->env_cr3);
 	for (i=0; i<size; i++) {
 		struct PageInfo* pp = page_alloc(0);
 		if (pp == NULL)
-			panic("region_alloc: allocate new page failed! %e", pp);
+			panic("region_alloc(): allocate new page failed! %e", pp);
 		// @@@ [TODO] Needs to check the permission
 		
 		int result = page_insert(e->env_pml4e, pp, (void*)va_aligned, PTE_USER);
-		//memset((void*)va_aligned, 0x97, PGSIZE);
+		// memset((void*)va_aligned, 0x97, PGSIZE);
 		if (result < 0)
-			panic("region_alloc: %e", result);
-		va_aligned = (uintptr_t)((char*)va_aligned + PGSIZE);		// @@@ fix a bug here, need to cast type
+			panic("region_alloc(): %e", result);
+		// @@@ Bug fixed here: casting added
+		va_aligned = (uintptr_t)((char*)va_aligned + PGSIZE);
 	}
-	//lcr3(boot_cr3);
 	
 	// (But only if you need it for load_icode.)
 	//
@@ -355,7 +361,9 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
-	cprintf("region_alloc: done!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] region_alloc(): done!\n");
+	#endif
 }
 
 //
@@ -421,18 +429,18 @@ load_icode(struct Env *e, uint8_t *binary)
 	int i;
 	
 	if (pbin->e_magic != ELF_MAGIC)
-		panic("load_icode: not elf format!");
+		panic("load_icode(): not elf format!");
 	
 	ph = (struct Proghdr *) ((char *) pbin + pbin->e_phoff);
 	eph = ph + pbin->e_phnum;
 	
 	for (; ph < eph; ph++) {
 		if (ph->p_filesz > ph->p_memsz)
-			panic("load_icode: wrong program segment size!");
+			panic("load_icode(): wrong program segment size!");
 		
 		if (ph->p_type == ELF_PROG_LOAD) {
-			//lcr3(e->env_cr3);
 			region_alloc(e, (void*)ph->p_va, ph->p_memsz);
+			// @@@ Switching cr3 into user environment
 			lcr3(e->env_cr3);
 			memset((void*)ph->p_va, 0, ph->p_memsz);
 			
@@ -442,21 +450,23 @@ load_icode(struct Env *e, uint8_t *binary)
 			cprintf("load_icode: va %x ps %x\n", va, ps);
 			for (i = 0; i < ph->p_filesz; i++)
 				va[i] = ps[i];
+				
 			//memcpy((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
+			// @@@ Switching cr3 back into kernel mode
 			lcr3(boot_cr3);
 		}
 	}
 	
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
-	region_alloc(e, (void*)(USTACKTOP - PGSIZE), PGSIZE);		// @@@ fix another lethal bug here. Be extremely careful!!! Don't do this: (void*)(USTACKTOP-PGSIZE)
+	// @@@ Fixed another lethal bug here. Be extremely careful!!! 
+	// Don't do this: (void*)(USTACKTOP-PGSIZE)
+	region_alloc(e, (void*)(USTACKTOP - PGSIZE), PGSIZE);
 
 	// LAB 3: Your code here.
-	// @@@ do something with entry point
+	// @@@ Get the entry point of given binary
 	e->env_tf.tf_rip = pbin->e_entry;
-	
     e->elf = binary;
-
 }
 
 //
@@ -470,20 +480,22 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
-	cprintf("env_create: %x\n", binary); 
-	struct Env *newenv;
-	//int r = env_alloc(&newenv, 0);
-	//if (r < 0)
-	if (env_alloc(&newenv, 0) < 0)
-		panic("env_create: failed to allocate new Env!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_create(): %x\n", binary); 
+	#endif
 	
-	//cprintf("env_create: env_alloc - %e \n", r);
+	struct Env *newenv;
+
+	if (env_alloc(&newenv, 0) < 0)
+		panic("env_create(): failed to allocate new Env!\n");
 	
 	load_icode(newenv, binary);
 	newenv->env_type = type;
 	newenv->env_parent_id = 0;
 	
-	cprintf("env_create: done!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_create(): done!\n");
+	#endif
 }
 
 //
@@ -625,9 +637,14 @@ env_run(struct Env *e)
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(curenv->env_cr3);
-	// @@@ store all the values of registers of previous running env into env_tf of new env(?)
+	
+	// @@@ Store all the values of registers of previous running env into env_tf of new env(?)
 	struct PushRegs regs = curenv->env_tf.tf_regs;
-	//cprintf("env_run: all register values to be loaded in current Env:\n\trbp: %x\n", regs.reg_rbp);
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] env_run(): all register values to be loaded in current Env:\n\trbp: %x\n", regs.reg_rbp);
+	#endif
+	
 	env_pop_tf(&(curenv->env_tf));
 
 	//panic("env_run not yet implemented");

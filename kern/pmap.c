@@ -216,7 +216,7 @@ boot_alloc(uint32_t n)
 		// @@@ nextfree: ptr to next free memory addr
 		nextfree = ROUNDUP((char *) end_debug, PGSIZE);
 		#ifdef DEBUG
-		cprintf("[DEBUG] nextfree's value is: %u\n", nextfree);
+		cprintf("[DEBUG2] boot_alloc(): nextfree's value is: %u\n", nextfree);
 		#endif
 	}
 
@@ -275,7 +275,7 @@ x64_vm_init(void)
 	// @@@ Store physical address in cr3
 	boot_cr3 = PADDR(pml4e);
 	#ifdef DEBUG
-	cprintf("boot_cr3 is: %x\n", boot_cr3);
+	cprintf("[DEBUG2] x64_vm_init(): boot_cr3 is %x\n", boot_cr3);
 	#endif
 
 	//////////////////////////////////////////////////////////////////////
@@ -286,7 +286,7 @@ x64_vm_init(void)
 	// Your code goes here:
 	
 	#ifdef DEBUG
-	cprintf("[DEBUG] # of pages: %d, size of struct PageInfo is: %d bytes\n", npages, sizeof(struct PageInfo));
+	cprintf("[DEBUG2] x64_vm_init(): # of pages %d, size of struct PageInfo is %d bytes\n", npages, sizeof(struct PageInfo));
 	#endif
 	
 	// @@@ Define ptr pointing to the first addr of the PageInfo structure, containing npages * 16K PageInfos
@@ -368,7 +368,9 @@ x64_vm_init(void)
 	page_check();
 	check_page_free_list(0);
 	
-	cprintf("x64_vm_init: done!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG2] x64_vm_init(): done!\n");
+	#endif
 }
 
 
@@ -416,7 +418,7 @@ page_init(void)
 	//uintptr_t bptva_en = (uintptr_t)pa2page((physaddr_t)BOOT_PAGE_TABLE_END);
 	
 	#ifdef DEBUG
-	cprintf("[DEBUG]\n");
+	cprintf("[DEBUG2] page_init()\n");
 	cprintf("  end_debug\t%08x (virt)\n", end_debug);
 	cprintf("  BOOT_PAGE_TABLE_START\t%08x (virt)\n", BOOT_PAGE_TABLE_START);	// Should not be virtual address!!!
 	cprintf("  BOOT_PAGE_TABLE_END\t%08x (virt)\n", BOOT_PAGE_TABLE_END);
@@ -435,7 +437,7 @@ page_init(void)
 			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
 		{
 			#ifdef DEBUG
-			// cprintf("[DEBUG] pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
+			// cprintf("[DEBUG2] page_init(): pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
 			#endif
 			// @@@ pp_ref = 1: Page Not Available on the free page list
 			pages[i].pp_ref = 1;
@@ -456,16 +458,19 @@ page_init(void)
 		}
 	}
 	#ifdef DEBUG
-	cprintf("[DEBUG] Page_init(): initialization finished!\n\n");
+	cprintf("[DEBUG2] page_init(): initialization finished!\n\n");
 	uint64_t err_pp = 0x800432fff0;
 	struct PageInfo* errpp = (struct PageInfo*)err_pp;
-	cprintf("[DEBUG] errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	cprintf("[DEBUG2] page_init(): errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
 	errpp = errpp->pp_link;
-	cprintf("[DEBUG] errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
+	cprintf("[DEBUG2] page_init(): errpp\t%08x (pointer addr) %08x %08x (page kva)\n", errpp, errpp->pp_link, (uintptr_t)page2kva(errpp));
 	#endif
-	/*cprintf("[DEBUG] First_free_page addr is: %08x (Physical addr: %08x)\n", first_free_page, PADDR(first_free_page));
-	cprintf("[DEBUG] Boot PML4E is: %08x (Physical addr: %08x) \n", boot_pml4e, PADDR(boot_pml4e));
-	cprintf("[DEBUG] PDPE: %08x \n", pml4e_walk(boot_pml4e, 0x0, 1));*/
+	
+	/*
+	cprintf("[DEBUG2] First_free_page addr is: %08x (Physical addr: %08x)\n", first_free_page, PADDR(first_free_page));
+	cprintf("[DEBUG2] Boot PML4E is: %08x (Physical addr: %08x) \n", boot_pml4e, PADDR(boot_pml4e));
+	cprintf("[DEBUG2] PDPE: %08x \n", pml4e_walk(boot_pml4e, 0x0, 1));
+	*/
 }
 
 //
@@ -485,7 +490,7 @@ page_alloc(int alloc_flags)
 {
 	// Fill this function in
 	#ifdef DEBUG
-	cprintf("[DEBUG] page_alloc(): start!\n");
+	cprintf("[DEBUG2] page_alloc(): start!\n");
 	#endif
 	
 	struct PageInfo *newp;
@@ -493,7 +498,7 @@ page_alloc(int alloc_flags)
 	if (newp == NULL)
 	{
 		#ifdef DEBUG
-		cprintf("[DEBUG] page_alloc(): running out of memory!\n");
+		cprintf("[DEBUG2] page_alloc(): running out of memory!\n");
 		#endif
 		return NULL;
 	}
@@ -531,7 +536,7 @@ page_free(struct PageInfo *pp)
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
 	#ifdef DEBUG
-	cprintf("[DEBUG] page_free(): start!\n");
+	cprintf("[DEBUG2] page_free(): start!\n");
 	#endif
 	
 	if (pp->pp_ref!=0 || pp->pp_link != NULL)
@@ -587,9 +592,9 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 	if((pml4e[PML4(va)] & PTE_P))
 	{
 		#ifdef DEBUG
-		cprintf("pml4e_walk: pdp table exist!\npml4e_walk: va: %x\n", va);
-		cprintf("pml4e_walk: PML4(va) %x pml4e[PML4(va)]: %x\n", PML4(va), pml4e[PML4(va)]);
-		cprintf("pml4e_walk: pdpe: %x, *pdpe %x \n" , pdpe, *pdpe);
+		//cprintf("[DEBUG2] pml4e_walk(): pdp table exist!\n[DEBUG2] pml4e_walk: va: %x\n", va);
+		//cprintf("[DEBUG2] pml4e_walk(): PML4(va) %x pml4e[PML4(va)]: %x\n", PML4(va), pml4e[PML4(va)]);
+		//cprintf("[DEBUG2] pml4e_walk(): pdpe: %x, *pdpe %x \n" , pdpe, *pdpe);
 		#endif
 		pdpe = (pdpe_t *) KADDR(PTE_ADDR(pml4e[PML4(va)]));
 		pte = pdpe_walk(pdpe, va, create);
@@ -605,9 +610,9 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 		pml4e[PML4(va)] = (page2pa(NewPageForPDPT) & ~0xFFF) | PTE_USER;
 		pdpe = (pdpe_t *) KADDR(PTE_ADDR(pml4e[PML4(va)]));
 		#ifdef DEBUG
-		cprintf("pml4e_walk: pdp table doesn't exist!\npml4e_walk: va: %x\n", va);
-		cprintf("pml4e_walk: PML4(va) %x pml4e[PML4(va)]: %x\n", PML4(va), pml4e[PML4(va)]);
-		cprintf("pml4e_walk: pdpe: %x, *pdpe %x \n" , pdpe, *pdpe);
+		//cprintf("[DEBUG2] pml4e_walk(): pdp table doesn't exist!\npml4e_walk: va: %x\n", va);
+		//cprintf("[DEBUG2] pml4e_walk(): PML4(va) %x pml4e[PML4(va)]: %x\n", PML4(va), pml4e[PML4(va)]);
+		//cprintf("[DEBUG2] pml4e_walk(): pdpe: %x, *pdpe %x \n" , pdpe, *pdpe);
 		#endif
 		pte = pdpe_walk(pdpe, va, create);
 		if(pte == NULL) 
@@ -640,8 +645,8 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create)
 	{
 		pde = (pde_t *) KADDR(PTE_ADDR(pdpe[PDPE(va)]));
 		#ifdef DEBUG
-		cprintf("pdpe_walk: &pdpe[PDPE(va)]: %x pdpe[PDPE(va)]: %x\n", &pdpe[PDPE(va)], pdpe[PDPE(va)]);
-		cprintf("pdpe_walk: pde: %x, *pde %x \n" , pde, *pde);
+		//cprintf("[DEBUG2] pdpe_walk(): &pdpe[PDPE(va)]: %x pdpe[PDPE(va)]: %x\n", &pdpe[PDPE(va)], pdpe[PDPE(va)]);
+		//cprintf("[DEBUG2] pdpe_walk(): pde: %x, *pde %x \n" , pde, *pde);
 		#endif
 		pte = pgdir_walk(pde, va, create);
 		return pte;
@@ -656,8 +661,8 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create)
 		pdpe[PDPE(va)] = (page2pa(NewPageForPDT) & ~0xFFF) | PTE_USER;
 		pde = (pde_t *) KADDR(PTE_ADDR(pdpe[PDPE(va)]));
 		#ifdef DEBUG
-		cprintf("pdpe_walk: &pdpe[PDPE(va)]: %x pdpe[PDPE(va)]: %x\n", &pdpe[PDPE(va)], pdpe[PDPE(va)]);
-		cprintf("pdpe_walk: pde: %x, *pde %x \n" , pde, *pde);
+		//cprintf("[DEBUG2] pdpe_walk(): &pdpe[PDPE(va)]: %x pdpe[PDPE(va)]: %x\n", &pdpe[PDPE(va)], pdpe[PDPE(va)]);
+		//cprintf("[DEBUG2] pdpe_walk(): pde: %x, *pde %x \n" , pde, *pde);
 		#endif
 		pte = pgdir_walk(pde, va, create);
 		if(pte == NULL) 
@@ -690,8 +695,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	{
 		pte = (pte_t*)KADDR((PTE_ADDR(pgdir[PDX(va)]) & ~0xFFF) + PTX(va)*8);
 		#ifdef DEBUG
-		cprintf("pgdir_walk: &pgdir[PDX(va)]: %x pgdir[PDX(va)]: %x\n", &pgdir[PDX(va)], pgdir[PDX(va)]);
-		cprintf("pgdir_walk: pte: %x, *pte %x \n" , pte, *pte);
+		//cprintf("[DEBUG2] pgdir_walk(): &pgdir[PDX(va)]: %x pgdir[PDX(va)]: %x\n", &pgdir[PDX(va)], pgdir[PDX(va)]);
+		//cprintf("[DEBUG2] pgdir_walk(): pte: %x, *pte %x \n" , pte, *pte);
 		#endif
 		return pte;
 	}
@@ -705,8 +710,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 		pgdir[PDX(va)] = (page2pa(NewPageForPT) & ~0xFFF) | PTE_USER;
 		pte = (pte_t*)KADDR((PTE_ADDR(pgdir[PDX(va)]) & ~0xFFF) + PTX(va)*8);
 		#ifdef DEBUG
-		cprintf("pgdir_walk: &pgdir[PDX(va)]: %x pgdir[PDX(va)]: %x\n", &pgdir[PDX(va)], pgdir[PDX(va)]);
-		cprintf("pgdir_walk: pte: %x, *pte %x \n" , pte, *pte);
+		//cprintf("[DEBUG2] pgdir_walk(): &pgdir[PDX(va)]: %x pgdir[PDX(va)]: %x\n", &pgdir[PDX(va)], pgdir[PDX(va)]);
+		//cprintf("[DEBUG2] pgdir_walk(): pte: %x, *pte %x \n" , pte, *pte);
 		#endif
 		if(pte == NULL) 
 		{
@@ -743,7 +748,9 @@ boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int pe
 		pte_t *pte = pml4e_walk(pml4e, (char*)va_temp, 1);
 		*pte = (uintptr_t)pa_temp | perm | PTE_P;
 	}
-	cprintf("boot_map_region: map [%x, %x) to [%x, %x) success!\n", la, la+size, pa, pa+size);
+	#ifdef DEBUG
+	cprintf("[DEBUG2] boot_map_region(): map [%x, %x) to [%x, %x) success!\n", la, la+size, pa, pa+size);
+	#endif
 }
 
 //
@@ -779,13 +786,12 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	if (pte == NULL)
 		return -E_NO_MEM;
 	if (*pte & PTE_P)
-	{
 		page_remove(pml4e, va);
-	}
-	pp->pp_ref++;
+
+		pp->pp_ref++;
 	*pte = (page2pa(pp) & ~0xFFF) | (perm|PTE_P);
 	#ifdef DEBUG
-	cprintf("page_insert: pte %x, *pte: %x\n", pte, *pte);
+	cprintf("[DEBUG2] page_insert(): pte %x, *pte: %x\n", pte, *pte);
 	#endif
 	
 	return 0;
@@ -808,9 +814,9 @@ page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store)
 	// Fill this function in
 	struct PageInfo *result;
 	pte_t *pte = pml4e_walk(pml4e, va, 0);
-	if(pte == NULL) {
+	if(pte == NULL) 
 		return NULL;
-	}
+
 	physaddr_t pa = (physaddr_t)((*pte & ~0xFFF) + PGOFF(va));
 	result = pa2page(pa);
 	if(pte_store != NULL)
@@ -888,7 +894,9 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	uintptr_t vaCurrent = (uintptr_t)ROUNDDOWN(va, PGSIZE);
 	uintptr_t vaLast = (uintptr_t)ROUNDUP(va + len, PGSIZE);
 
-	// cprintf("user_mem_check(): vaCurrent - %x, vaLast - %x\n", vaCurrent, vaLast);
+	#ifdef DEBUG
+	cprintf("[DEBUG3] user_mem_check(): vaCurrent - %x, vaLast - %x\n", vaCurrent, vaLast);
+	#endif
 	
 	perm = perm | PTE_P;
 	pte_t* pte = NULL;
@@ -930,8 +938,11 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	void
 user_mem_assert(struct Env *env, const void *va, size_t len, int perm)
 {
+	#ifdef DEBUG
 	//int result = user_mem_check(env, va, len, perm | PTE_U);
-	//cprintf("usr_mem_assert(): va - %x, perm - %d\n", va, perm);
+	//cprintf("[DEBUG3] usr_mem_assert(): va - %x, perm - %d\n", va, perm);
+	#endif
+	
 	if (user_mem_check(env, va, len, perm | PTE_U) < 0) {
 		cprintf("[%08x] user_mem_check assertion failure for "
 			"va %08x\n", env->env_id, user_mem_check_addr);
@@ -1002,7 +1013,7 @@ check_page_free_list(bool only_low_memory)
 
 	assert(nfree_extmem > 0);
 	#ifdef DEBUG
-	cprintf("[DEBUG] check_page_free_list(): check page free memory passed!\n");
+	cprintf("[DEBUG2] check_page_free_list(): check page free memory passed!\n");
 	#endif
 }
 
@@ -1028,14 +1039,14 @@ check_page_alloc(void)
 		#ifdef DEBUG
 		if ((uint64_t)pp0==0x800432fff0 || (uint64_t)pp0==0x8004330000)
 		{
-			//cprintf("[DEBUG] pp0\t%08x (pointer addr) %08x %08x (page kva)\n", pp0, pp0->pp_link, (uintptr_t)page2kva(pp0));
+			//cprintf("[DEBUG2] pp0\t%08x (pointer addr) %08x %08x (page kva)\n", pp0, pp0->pp_link, (uintptr_t)page2kva(pp0));
 		}
 		#endif
 		memset(page2kva(pp0), 0x97, PGSIZE);
 	}
 	
 	#ifdef DEBUG
-	cprintf("[DEBUG] Check free page finished!\n");
+	cprintf("[DEBUG2] check_page_alloc(): Check free page finished!\n");
 	#endif
 	
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {

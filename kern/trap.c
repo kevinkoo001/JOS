@@ -24,7 +24,7 @@ static struct Trapframe *last_tf;
  * shifted function addresses can't be represented in relocation records.)
  */
 struct Gatedesc idt[256] = { { 0 } };
-/* @@@ copy to here
+/* @@@ copy to here for reference
 // Gate descriptors for interrupts and traps
 struct Gatedesc {
 	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
@@ -106,7 +106,8 @@ trap_init(void)
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, handle_divide, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, handle_debug, 0);
 	SETGATE(idt[T_NMI], 0, GD_KT, handle_nmi, 0);
-	SETGATE(idt[T_BRKPT], 0, GD_KT, handle_brkpt, 3);	// @@@ this int doesn't need kernel privilege
+	// @@@ need not kernel privilege
+	SETGATE(idt[T_BRKPT], 0, GD_KT, handle_brkpt, 3);
 	SETGATE(idt[T_OFLOW], 0, GD_KT, handle_oflow, 0);
 	SETGATE(idt[T_BOUND], 0, GD_KT, handle_bound, 0);
 	SETGATE(idt[T_ILLOP], 0, GD_KT, handle_illop, 0);
@@ -121,15 +122,19 @@ trap_init(void)
 	SETGATE(idt[T_ALIGN], 0, GD_KT, handle_align, 0);
 	SETGATE(idt[T_MCHK], 0, GD_KT, handle_mchk, 0);
 	SETGATE(idt[T_SIMDERR], 0, GD_KT, handle_simderr, 0);
-	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 3);	// @@@ watch permission!
+	// @@@ syscall should be user privilege
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 3);
 	SETGATE(idt[T_DEFAULT], 0, GD_KT, handle_default, 0);
 	
     idt_pd.pd_lim = sizeof(idt)-1;
     idt_pd.pd_base = (uint64_t)idt;
+	
 	// Per-CPU setup
 	trap_init_percpu();
 	
-	cprintf("trap_init: done!\n");
+	#ifdef DEBUG
+	cprintf("[DEBUG3] trap_init(): done!\n");
+	#endif
 }
 
 // Initialize and load the per-CPU TSS and IDT
@@ -208,28 +213,38 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
-	//cprintf("Enter trap_dispatch!\ntrap number: %d\n", tf->tf_trapno);
-	// @@@ Ex5.
+	#ifdef DEBUG
+	// cprintf("[DEBUG3] trap_dispatch(): Enter trap_dispatch!\n");
+	// cprintf("[DEBUG3] trap number: %d\n", tf->tf_trapno);
+	#endif
+	
+	// @@@ Ex5. Dispatch page fault exceptions
 	if (tf->tf_trapno == T_PGFLT)
 	{
 		page_fault_handler(tf);
 		return;
 	}
 	
-	// @@@ Ex6.
+	// @@@ Ex6. Make breakpoint exceptions invoke the kernel monitor
 	else if (tf->tf_trapno == T_BRKPT)
 	{
 		monitor(tf);
 		return;
 	}
 	
-	// @@@ Ex7.
+	// @@@ Ex7. Add a handler in the kernel for interrupt vector 
 	else if (tf->tf_trapno == T_SYSCALL)
 	{
-		cprintf("SYSTEM CALL syscallno: %x\n", tf->tf_regs.reg_rax);
-		//cprintf("Before system call, rax %x\n", tf->tf_regs.reg_rax);
+		#ifdef DEBUG
+		cprintf("[DEBUG3] trap_dispatch(): SYSTEM CALL syscallno: %x\n", tf->tf_regs.reg_rax);
+		cprintf("[DEBUG3] trap_dispatch(): Before system call, rax %x\n", tf->tf_regs.reg_rax);
+		#endif
+		
 		tf->tf_regs.reg_rax = syscall(tf->tf_regs.reg_rax, tf->tf_regs.reg_rdx, tf->tf_regs.reg_rcx, tf->tf_regs.reg_rbx, tf->tf_regs.reg_rdi, tf->tf_regs.reg_rsi);
-		//cprintf("After system call, rax %x\n", tf->tf_regs.reg_rax);
+		
+		#ifdef DEBUG
+		cprintf("[DEBUG3] trap_dispatch(): After system call, rax %x\n", tf->tf_regs.reg_rax);
+		#endif
 		return;
 	}
 
@@ -293,6 +308,7 @@ page_fault_handler(struct Trapframe *tf)
 
 	// Handle kernel-mode page faults.
 	// LAB 3: Your code here.
+	// @@@ Check if tf->tf_cs is in kernel mode
 	if(tf->tf_cs == GD_KT || tf->tf_cs == GD_KD) {
 		panic("Page fault happens in kernel mode!!");
 		print_trapframe(tf);
