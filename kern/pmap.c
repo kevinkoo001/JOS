@@ -468,7 +468,8 @@ page_init(void)
 	for (i = 0; i < npages; i++) {
 		if((i == 0)
 			|| (&pages[i] >= pa2page((physaddr_t)IOPHYSMEM) && (uintptr_t)page2kva(&pages[i]) < (uintptr_t)first_free_page)
-			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000)))
+			|| (&pages[i] >= pa2page((physaddr_t)0x8000) && &pages[i] < pa2page((physaddr_t)0xe000))
+			|| (&pages[i] == pa2page((physaddr_t)MPENTRY_PADDR)))
 		{
 			#ifdef DEBUG
 			// cprintf("[DEBUG2] page_init(): pages[%u]\t%08x (pointer addr) %08x (page kva) is set to be used!\n", i, &pages[i], (uintptr_t)page2kva(&pages[i]));
@@ -1084,9 +1085,7 @@ check_page_free_list(bool only_low_memory)
 	}
 
 	assert(nfree_extmem > 0);
-	#ifdef DEBUG
-	cprintf("[DEBUG2] check_page_free_list(): check page free memory passed!\n");
-	#endif
+	cprintf("[DEBUG] check_page_free_list(): check page free memory passed!\n");
 }
 
 
