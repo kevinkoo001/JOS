@@ -22,7 +22,7 @@ extern pml4e_t *boot_pml4e;
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
  * and returns the corresponding physical address.  It panics if you pass it a
  * non-kernel virtual address.
- */
+ */ //Adrian: physaddr_t IS uint64_t! can't stand anymore! kva: kernel virtual address
 #define PADDR(kva)						\
 ({								\
 	physaddr_t __m_kva = (physaddr_t) (kva);		\
@@ -53,7 +53,7 @@ void    x64_vm_init();
 void	page_init(void);
 struct PageInfo * page_alloc(int alloc_flags);
 void	page_free(struct PageInfo *pp);
-int	page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm);
+int		page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm);
 void	page_remove(pml4e_t *pml4e, void *va);
 struct PageInfo *page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store);
 void	page_decref(struct PageInfo *pp);
@@ -64,6 +64,9 @@ void *	mmio_map_region(physaddr_t pa, size_t size);
 
 int	user_mem_check(struct Env *env, const void *va, size_t len, int perm);
 void	user_mem_assert(struct Env *env, const void *va, size_t len, int perm);
+
+// @@@ put boot_mag_region into header file
+//void	boot_map_region(pml4e_t *pml4e, uintptr_t la, size_t size, physaddr_t pa, int perm);
 
 static inline ppn_t
 page2ppn(struct PageInfo *pp)

@@ -171,7 +171,7 @@ memmove(void *dst, const void *src, size_t n)
 #else
 
 void *
-memset(void *v, int c, size_t n)
+memset(void *v, int c, size_t n)		// Adrian: c is used to initialize mem space (always 0).
 {
 	char *p;
 	int m;

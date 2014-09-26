@@ -167,8 +167,8 @@ struct {								\
  */
 #define	LIST_INIT(head) do {						\
 	LIST_FIRST((head)) = NULL;					\
-} while (0)
-
+} while (0)			// Adrian: the use of do {} while(0) is to avoid syntax error when compile this macro,
+					// because there is only one line of code.
 /*
  * Insert the element "elm" *after* the element "listelm" which is
  * already in the list.  The "field" name is the link element

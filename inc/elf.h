@@ -5,20 +5,20 @@
 
 struct Elf {
 	uint32_t e_magic;	// must equal ELF_MAGIC
-	uint8_t e_elf[12];
+	uint8_t e_elf[12];	// @@@ Not important. Don't care
 	uint16_t e_type;
 	uint16_t e_machine;
 	uint32_t e_version;
-	uint64_t e_entry;
-	uint64_t e_phoff;
-	uint64_t e_shoff;
-	uint32_t e_flags;
-	uint16_t e_ehsize;
-	uint16_t e_phentsize;
-	uint16_t e_phnum;
-	uint16_t e_shentsize;
-	uint16_t e_shnum;
-	uint16_t e_shstrndx;
+	uint64_t e_entry;	// @@@ va of program start, important
+	uint64_t e_phoff;	// @@@ program header offset
+	uint64_t e_shoff;	// @@@ section header offset
+	uint32_t e_flags;	// @@@ stores the value of flags register for this elf
+	uint16_t e_ehsize;	// @@@ elf header's size
+	uint16_t e_phentsize;	// @@@ size of one entry in program header table
+	uint16_t e_phnum;	// @@@ number of program header table entries
+	uint16_t e_shentsize;	// @@@ size of one entry in section header table
+	uint16_t e_shnum;	// @@@ number of section header table entries
+	uint16_t e_shstrndx;	// @@@ offset of string table entry in section header table (could be SHN_UNDEF)
 };
 
 struct Proghdr {
@@ -33,16 +33,16 @@ struct Proghdr {
 };
 
 struct Secthdr {
-	uint32_t sh_name;
+	uint32_t sh_name;	// @@@ e.g. .text .date .stack .debuginfo .rodata .bss
 	uint32_t sh_type;
 	uint64_t sh_flags;
-	uint64_t sh_addr;
-	uint64_t sh_offset;
-	uint64_t sh_size;
-	uint32_t sh_link;
-	uint32_t sh_info;
-	uint64_t sh_addralign;
-	uint64_t sh_entsize;
+	uint64_t sh_addr;	// @@@ virtual address for each section
+	uint64_t sh_offset;	// @@@ offset from beginning of file to the section this entry points to
+	uint64_t sh_size;	// @@@ size of the secion
+	uint32_t sh_link;	// @@@ Figure 1-12
+	uint32_t sh_info;	// @@@ Figure 1-12
+	uint64_t sh_addralign;	// @@@ specify the alignment requirement
+	uint64_t sh_entsize;	// @@@ entry size of the table this section holds. Mostly zeor (means no table)
 };
 
 

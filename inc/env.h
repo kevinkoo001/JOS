@@ -27,8 +27,8 @@ extern physaddr_t boot_cr3;
 // stands for the current environment.
 
 #define LOG2NENV		10
-#define NENV			(1 << LOG2NENV)
-#define ENVX(envid)		((envid) & (NENV - 1))
+#define NENV			(1 << LOG2NENV)	// # MAX = 1024
+#define ENVX(envid)		((envid) & (NENV - 1))	// Takes the last 10 bits
 
 // Values of env_status in struct Env
 enum {

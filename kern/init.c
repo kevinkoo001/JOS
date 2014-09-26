@@ -33,7 +33,7 @@ i386_init(void)
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
-	memset(edata, 0, end - edata);
+	memset(edata, 0, end - edata);		// Adrian: initialize from edata to end-edata
 
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
@@ -69,7 +69,24 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
+<<<<<<< HEAD
 	ENV_CREATE(user_primes, ENV_TYPE_USER);
+=======
+	#ifdef DEBUG
+	cprintf("[DEBUG3] i386_init(): Before entering user env! \n");
+	#endif
+	
+	// ENV_CREATE(user_hello, ENV_TYPE_USER);
+	// ENV_CREATE(user_breakpoint, ENV_TYPE_USER);
+	// ENV_CREATE(user_buggyhello2, ENV_TYPE_USER);
+	// ENV_CREATE(user_evilhello, ENV_TYPE_USER);
+	ENV_CREATE(user_buggyhello, ENV_TYPE_USER);
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] i386_init(): After exiting user env! \n");
+	#endif
+
+>>>>>>> lab3
 #endif // TEST*
 
 	// Schedule and run the first user environment!
@@ -105,6 +122,9 @@ boot_aps(void)
 		while(c->cpu_status != CPU_STARTED)
 			;
 	}
+	// @@@ from lab3
+	// We only have one user environment for now, so just run it.
+	env_run(&envs[0]);
 }
 
 // Setup code for APs
@@ -154,6 +174,8 @@ _panic(const char *file, int line, const char *fmt,...)
 
 	va_start(ap, fmt);
 	cprintf("kernel panic on CPU %d at %s:%d: ", cpunum(), file, line);
+	// @@@ from lab3
+	cprintf("kernel panic at %s:%d: ", file, line);
 	vcprintf(fmt, ap);
 	cprintf("\n");
 	va_end(ap);

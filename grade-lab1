@@ -14,7 +14,7 @@ def test_jos():
 def test_printf():
     r.match("6828 decimal is 15254 octal!")
 
-BACKTRACE_RE = r"^ *rbp +00000080042[0-9a-z]{5} +rip +0000008004200[0-9a-z]{3}"
+BACKTRACE_RE = r"^ *rbp +00000080042[0-9a-z]{5} +rip +000000800420[0-1][0-9a-z]{3}"
 
 @test(10, parent=test_jos)
 def test_backtrace_count():
@@ -25,13 +25,16 @@ def test_backtrace_count():
 def test_backtrace_arguments():
     matches = re.findall(r"kern/init.c:[0-9]+: +test_backtrace\+[0-9]{16} +args:[0-9] +([0-9a-f]{16})", r.qemu.output, re.MULTILINE)
     assert_equal("\n".join(matches[:7]),
-                 "\n".join("%016x" % n for n in [0,0,1,2,3,4]))
+                 "\n".join("%016x" % n for n in [0,1,2,3,4,5]))
 
 @test(5, parent=test_jos)
 def test_backtrace_symbols():
     matches = re.findall(r"kern/init.c:[0-9]+: +([^+]*)\+", r.qemu.output)
     assert_equal("\n".join(matches[:7]),
                  "\n".join(["test_backtrace"] * 6 + ["i386_init"]))
+    matches = re.findall(r"kern/monitor.c:[0-9]+: +([^+]*)\+", r.qemu.output)
+    assert_equal("\n".join(matches),
+                 "\n".join(["mon_backtrace"]))
 
 @test(5, parent=test_jos)
 def test_backtrace_lines():

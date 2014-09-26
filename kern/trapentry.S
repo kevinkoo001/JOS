@@ -50,6 +50,30 @@
    Find the PUSHA,POPA macros in kern/macro.h. Since amd64 doesn't support
    pusha,popa so you will find these macros handy.
  */
+ 
+	/* whether or not to use error code found here:
+	 * www3.cs.stonybrook.edu/~porter/courses/cse506/f14/ref/i386/s09_10.htm
+	 */
+	TRAPHANDLER_NOEC(handle_divide, T_DIVIDE)
+	TRAPHANDLER_NOEC(handle_debug, T_DEBUG)
+	TRAPHANDLER_NOEC(handle_nmi, T_NMI)
+	TRAPHANDLER_NOEC(handle_brkpt, T_BRKPT)
+	TRAPHANDLER_NOEC(handle_oflow, T_OFLOW)
+	TRAPHANDLER_NOEC(handle_bound, T_BOUND)
+	TRAPHANDLER_NOEC(handle_illop, T_ILLOP)
+	TRAPHANDLER_NOEC(handle_device, T_DEVICE)
+	TRAPHANDLER(handle_dblflt, T_DBLFLT)
+	TRAPHANDLER(handle_tss, T_TSS)
+	TRAPHANDLER(handle_segnp, T_SEGNP)
+	TRAPHANDLER(handle_stack, T_STACK)
+	TRAPHANDLER(handle_gpflt, T_GPFLT)
+	TRAPHANDLER(handle_pgflt, T_PGFLT)
+	TRAPHANDLER_NOEC(handle_fperr, T_FPERR)
+	TRAPHANDLER(handle_align, T_ALIGN)
+	TRAPHANDLER_NOEC(handle_mchk, T_MCHK)
+	TRAPHANDLER_NOEC(handle_simderr, T_SIMDERR)
+	TRAPHANDLER_NOEC(handle_syscall, T_SYSCALL)
+	TRAPHANDLER_NOEC(handle_default, T_DEFAULT)
 
 
 
@@ -59,4 +83,31 @@
  * Hint: Be sure to review the x64 calling convention from lab1
  *       for how to pass a pointer to the trapframe.
  */
+
+_alltraps:
+	
+	/*xorq %rax,%rax
+	 *movw %ds, %ax
+	 *push %ds
+	 *movw %es, %ax
+	 *push %es
+	 */ // this is all wrong, I cannot mess rax
+	 
+	subq $16, %rsp
+	movq $0, 0(%rsp)
+	movq $0, 8(%rsp)
+	movw %es, 0(%rsp)
+	movw %ds, 8(%rsp)
+	PUSHA
+	
+	movw $GD_KD, %ax
+	movw %ax, %ds
+	movw %ax, %es
+	
+	// @@@ move the first arg into rdi, as the struct Trapframe *tf
+	// @@@ http://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64/
+	
+	movq %rsp, %rdi
+	call trap
+
 

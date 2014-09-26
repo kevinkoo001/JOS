@@ -22,6 +22,13 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	// LAB 3: Your code here.
+	
+	#ifdef DEBUG
+	cprintf("sys_cputs: curenv - %x, *s - %s, len - %d\n", curenv, *s, len);
+	#endif
+	
+	// @@@ Defined at kern\pmap.c
+	user_mem_assert(curenv, (char*)s, len, 0);
 
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
@@ -273,12 +280,33 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 	// Call the function corresponding to the 'syscallno' parameter.
 	// Return any appropriate return value.
 	// LAB 3: Your code here.
-
-	panic("syscall not implemented");
-
+	
+	//panic("syscall not implemented");
+	uint64_t ret;
+	
+	#ifdef DEBUG
+	cprintf("[DEBUG3] syscall(): Syscallno %x\n", syscallno);
+	#endif
+	
 	switch (syscallno) {
-	default:
-		return -E_NO_SYS;
+		case SYS_cputs:
+			sys_cputs((char*)a1, a2);
+			return 0;
+		case SYS_cgetc:
+			ret = sys_cgetc();
+			return ret;
+		case SYS_getenvid:
+			ret = sys_getenvid();
+			return ret;
+		case SYS_env_destroy:
+			if(sys_env_destroy(a1) == 0)
+				return 0;
+			return -E_NO_SYS;
+		case NSYSCALLS:
+			return -E_INVAL;
+		// @@@ In case of other system call
+		default:
+			return -E_NO_SYS;
 	}
 }
 
