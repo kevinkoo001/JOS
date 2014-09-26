@@ -122,9 +122,7 @@ boot_aps(void)
 		while(c->cpu_status != CPU_STARTED)
 			;
 	}
-	// @@@ from lab3
-	// We only have one user environment for now, so just run it.
-	env_run(&envs[0]);
+
 }
 
 // Setup code for APs
@@ -174,8 +172,6 @@ _panic(const char *file, int line, const char *fmt,...)
 
 	va_start(ap, fmt);
 	cprintf("kernel panic on CPU %d at %s:%d: ", cpunum(), file, line);
-	// @@@ from lab3
-	cprintf("kernel panic at %s:%d: ", file, line);
 	vcprintf(fmt, ap);
 	cprintf("\n");
 	va_end(ap);

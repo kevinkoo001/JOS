@@ -18,8 +18,7 @@
 #include <kern/spinlock.h>
 
 struct Env *envs = NULL;		// All environments
-// @@@ from lab3
-struct Env *curenv = NULL;		// The current env
+
 static struct Env *env_free_list;	// Free environment list
 // (linked by Env->env_link)
 
@@ -610,10 +609,7 @@ env_destroy(struct Env *e)
 		curenv = NULL;
 		sched_yield();
 	}
-	// @@@ from lab3
-	cprintf("Destroyed the only environment - nothing more to do!\n");
-	while (1)
-		monitor(NULL);
+
 }
 
 

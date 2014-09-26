@@ -188,8 +188,6 @@ trap_init_percpu(void)
 void
 print_trapframe(struct Trapframe *tf)
 {
-	// @@@ from lab3
-	cprintf("TRAP frame at %p\n", tf);
 	cprintf("TRAP frame at %p from CPU %d\n", tf, cpunum());
 	print_regs(&tf->tf_regs);
 	cprintf("  es   0x----%04x\n", tf->tf_es);
@@ -361,14 +359,6 @@ trap(struct Trapframe *tf)
 		env_run(curenv);
 	else
 		sched_yield();
-		
-	// @@@ from lab3
-	// Return to the current environment, which should be running.
-
-	assert(curenv && curenv->env_status == ENV_RUNNING);
-	env_run(curenv);
-
-
 }
 
 
