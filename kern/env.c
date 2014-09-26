@@ -57,14 +57,14 @@ struct Segdesc gdt[2*NCPU + 5] =
 	// 0x20 - user data segment
 	[GD_UD >> 3] = SEG64(STA_W, 0x0, 0xffffffff,3),				// @@@ GD_UD >> 3 is 4
 
-<<<<<<< HEAD
+
 	// Per-CPU TSS descriptors (starting from GD_TSS0) are initialized
 	// in trap_init_percpu()
-	[GD_TSS0 >> 3] = SEG_NULL,
-=======
-	// 0x28 - tss, initialized in trap_init_percpu()
-	[GD_TSS0 >> 3] = SEG_NULL,									// @@@ GD_TSS0 >> 3 is 5
->>>>>>> lab3
+	[GD_TSS0 >> 3] = SEG_NULL,	// @@@ GD_TSS0 >> 3 is 5
+
+	
+	
+
 	
 	[6] = SEG_NULL //last 8 bytes of the tss since tss is 16 bytes long
 };
