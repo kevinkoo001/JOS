@@ -888,16 +888,19 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	uintptr_t vaCurrent = (uintptr_t)ROUNDDOWN(va, PGSIZE);
 	uintptr_t vaLast = (uintptr_t)ROUNDUP(va + len, PGSIZE);
 
-	//cprintf("user_mem_check(): vaCurrent - %x, vaLast - %x\n", vaCurrent, vaLast);
+	// cprintf("user_mem_check(): vaCurrent - %x, vaLast - %x\n", vaCurrent, vaLast);
 	
 	perm = perm | PTE_P;
 	pte_t* pte = NULL;
 	
 	for( ;vaCurrent < vaLast; vaCurrent += PGSIZE) {
-		// @@@ Set the current va as the first erroneous va
-		user_mem_check_addr = vaCurrent;
+		// @@@ Set the current va as the first erroneous va if any
+		if(vaCurrent < PGSIZE)
+			user_mem_check_addr = (uintptr_t) va;
+		else
+			user_mem_check_addr = vaCurrent;
 		
-		// @@@ When user program can't access this range of address
+		// @@@ When user program try to access banned addr
 		if(vaCurrent >= ULIM) {
 			return -E_FAULT;
 		}
