@@ -401,7 +401,13 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	uint64_t c;
+	uintptr_t kstacktop_c;
+	for (c = 0; c < NCPU; c++)
+	{
+		kstacktop_c = KSTACKTOP - c * (KSTKSIZE + KSTKGAP);
+		boot_map_region(boot_pml4e, kstacktop_c-KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[c]), PTE_W);
+	}
 }
 
 // --------------------------------------------------------------
@@ -934,7 +940,14 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	size_t top = ROUNDUP(size, PGSIZE);
+	if (base + top > MMIOLIM)
+		panic("mmio map exceeds MMIOLIM!");
+	boot_map_region(boot_pml4e, base, top, pa, PTE_PCD|PTE_PWT|PTE_W);
+	void *result = (void*)base;
+	base += top;
+	return result;
+	//panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;

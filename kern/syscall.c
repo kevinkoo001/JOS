@@ -304,6 +304,10 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 			return -E_NO_SYS;
 		case NSYSCALLS:
 			return -E_INVAL;
+		// @@@ lab4 for round-robin scheduling
+		case SYS_yield:
+			sys_yield();
+			return 0;
 		// @@@ In case of other system call
 		default:
 			return -E_NO_SYS;

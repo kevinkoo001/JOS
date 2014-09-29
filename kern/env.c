@@ -663,6 +663,9 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	#ifdef DEBUG
+	cprintf("[DEBUG4] env_run: argument address: %x\n", e);
+	#endif
 	if (curenv != NULL && curenv->env_status == ENV_RUNNING)
 		curenv->env_status = ENV_RUNNABLE;
 	
@@ -678,6 +681,7 @@ env_run(struct Env *e)
 	cprintf("[DEBUG3] env_run(): all register values to be loaded in current Env:\n\trbp: %x\n", regs.reg_rbp);
 	#endif
 	
+	unlock_kernel();
 	env_pop_tf(&(curenv->env_tf));
 
 	//panic("env_run not yet implemented");
