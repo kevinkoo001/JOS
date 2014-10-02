@@ -100,9 +100,13 @@ sys_exofork(void)
 	// @@@ Left as env_alloc created it but status
 	newEnv->env_status = ENV_NOT_RUNNABLE;
 	
-	// @@@ How to copy the register set from the current environment??
-	// newEnv->env_tf = curenv->env_tf;
+	// @@@ Copy the register set from the current environment
+	newEnv->env_tf = curenv->env_tf;
+	//newEnv->env_tf.tf_regs = curenv->env_tf.tf_regs;
 	
+	// @@@ Tweaked so sys_exofork will appear to return 0?
+	newEnv->env_tf.tf_regs.reg_rax = 0;
+	// cprintf("sys_exofork: done! envid: %x\n", newEnv->env_id);
 	return newEnv->env_id;
 	
 	// panic("sys_exofork not implemented");
@@ -113,8 +117,8 @@ sys_exofork(void)
 //
 // Returns 0 on success, < 0 on error.  Errors are:
 //	-E_BAD_ENV if environment envid doesn't currently exist,
-//		or the caller doesn't have permission to change envid.
-//	-E_INVAL if status is not a valid status for an environment.
+//		or the caller doesn't have permission to change envid. (OK)
+//	-E_INVAL if status is not a valid status for an environment. (OK)
 static int
 sys_env_set_status(envid_t envid, int status)
 {
@@ -126,11 +130,15 @@ sys_env_set_status(envid_t envid, int status)
 
 	// LAB 4: Your code here.
 	struct Env* newEnv;
-	if(envid2env(envid, &newEnv, 1) < 0)
+	if(envid2env(envid, &newEnv, 1) < 0) {
+		//cprintf("sys_env_set_status: env does not exist!\n");
 		return -E_BAD_ENV;
+	}
 	
-	if(status != ENV_RUNNABLE || status != ENV_NOT_RUNNABLE)
+	if(!(status & ENV_RUNNABLE) && !(status & ENV_NOT_RUNNABLE)) {
+		//cprintf("sys_env_set_status: env status error! status %x\n", status);
 		return -E_INVAL;
+	}
 	
 	newEnv->env_status = status;
 	return 0;
@@ -190,8 +198,8 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	if((uintptr_t)va >= UTOP || ROUNDDOWN((uintptr_t)va, PGSIZE) != (uintptr_t)va)
 		return -E_INVAL;
 	
-	// @@@ Check permission (??)
-	if(!(perm & PTE_U) || !(perm & PTE_P) || (perm & PTE_AVAIL) || (perm & PTE_W))
+	// @@@ Check permission ??
+	if(!(perm & PTE_U) || !(perm & PTE_P) || (perm & !PTE_SYSCALL))
 		return -E_INVAL;
 	
 	// @@@ Allocate memory if page is successfully allocated
@@ -216,11 +224,11 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 //
 // Return 0 on success, < 0 on error.  Errors are:
 //	-E_BAD_ENV if srcenvid and/or dstenvid doesn't currently exist,
-//		or the caller doesn't have permission to change one of them. (OK?)
+//		or the caller doesn't have permission to change one of them. 
 //	-E_INVAL if srcva >= UTOP or srcva is not page-aligned,
 //		or dstva >= UTOP or dstva is not page-aligned. (OK)
 //	-E_INVAL is srcva is not mapped in srcenvid's address space. (OK)
-//	-E_INVAL if perm is inappropriate (see sys_page_alloc). (OK?)
+//	-E_INVAL if perm is inappropriate (see sys_page_alloc). (OK)
 //	-E_INVAL if (perm & PTE_W), but srcva is read-only in srcenvid's
 //		address space. (OK)
 //	-E_NO_MEM if there's no memory to allocate any necessary page tables. (OK)
@@ -241,7 +249,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	// [TODO] How to check if caller doesn't have permission to change one of them
 	struct Env* srcEnv;
 	struct Env* dstEnv;
-	if(envid2env(srcenvid, &srcEnv, 1) < 0 || envid2env(srcenvid, &srcEnv, 1) < 0 || envid2env(srcenvid, &dstEnv, 1) < 0 || envid2env(srcenvid, &dstEnv, 1) < 0)
+	if(envid2env(srcenvid, &srcEnv, 1) < 0 || envid2env(dstenvid, &dstEnv, 1) < 0)
 		return -E_BAD_ENV;
 	
 	// @@@ Check srcva/dstva
@@ -255,7 +263,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 		return -E_INVAL;
 		
 	// @@@ Check permission
-	if(!(perm & PTE_U) || !(perm & PTE_P) || (perm & PTE_AVAIL) || (perm & PTE_W))
+	if(!(perm & PTE_U) || !(perm & PTE_P) || (perm & !PTE_SYSCALL))
 		return -E_INVAL;
 	
 	// @@@ Check if (perm & PTE_W), but srcva is read-only in srcenvid's addr space
@@ -276,8 +284,8 @@ sys_page_map(envid_t srcenvid, void *srcva,
 //
 // Return 0 on success, < 0 on error.  Errors are:
 //	-E_BAD_ENV if environment envid doesn't currently exist,
-//		or the caller doesn't have permission to change envid.
-//	-E_INVAL if va >= UTOP, or va is not page-aligned.
+//		or the caller doesn't have permission to change envid. (OK)
+//	-E_INVAL if va >= UTOP, or va is not page-aligned. (OK)
 static int
 sys_page_unmap(envid_t envid, void *va)
 {
@@ -287,7 +295,6 @@ sys_page_unmap(envid_t envid, void *va)
 	struct Env* newEnv;
 	
 	// @@@ Check env and permission
-	// [TODO] check the caller doesn't have permission to change envid
 	if(envid2env(envid, &newEnv, 1) < 0)
 		return -E_BAD_ENV;
 	
@@ -404,6 +411,21 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 		case SYS_yield:
 			sys_yield();
 			return 0;
+		case SYS_exofork:
+			ret = sys_exofork();
+			return ret;
+		case SYS_env_set_status:
+			ret = sys_env_set_status((envid_t)a1, (int)a2);
+			return ret;
+		case SYS_page_alloc:
+			ret = sys_page_alloc((envid_t)a1, (void*)a2, (int)a3);
+			return ret;
+		case SYS_page_map:
+			ret = sys_page_map((envid_t)a1, (void*)a2, (envid_t)a3, (void*)a4, (int)a5);
+			return ret;
+		case SYS_page_unmap:
+			ret = sys_page_unmap((envid_t)a1, (void*)a2);
+			return ret;
 		// @@@ In case of other system call
 		default:
 			return -E_NO_SYS;
