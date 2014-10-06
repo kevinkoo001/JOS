@@ -12,15 +12,16 @@
 #include <kern/env.h>
 #include <kern/cpu.h>
 
-#define BOOT_PAGE_TABLE_START 0xf0008000
-#define BOOT_PAGE_TABLE_END   0xf000e000
+extern uint64_t pml4phys;
+#define BOOT_PAGE_TABLE_START ((uint64_t) KADDR((uint64_t) &pml4phys))
+#define BOOT_PAGE_TABLE_END   ((uint64_t) KADDR((uint64_t) (&pml4phys) + 5*PGSIZE))
 
 // These variables are set by i386_detect_memory()
 // @@@ size_t equals to uint64_t, defined in inc/types.h
 size_t npages;			// Amount of physical memory (in pages)
 static size_t npages_basemem;	// Amount of base memory (in pages)
 
-// These variables are set in mem_init()
+// These variables are set in x86_vm_init()
 pml4e_t *boot_pml4e;		// Kernel's initial page directory
 physaddr_t boot_cr3;		// Physical address of boot time page directory
 struct PageInfo *pages;		// Physical page state array
@@ -134,7 +135,7 @@ i386_detect_memory(void)
 		extmem = (nvram_read(NVRAM_EXTLO) * 1024);
 	}
     
-    assert(basemem);
+	assert(basemem);
 	npages_basemem = basemem / PGSIZE;
 	npages_extmem = extmem / PGSIZE;
 
@@ -142,15 +143,15 @@ i386_detect_memory(void)
     // and extended memory.
     if (npages_extmem)
 			// @@@ Define EXTPHYSMEM	0x100000
-            npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
-    else
-            npages = npages_basemem;
+			npages = (EXTPHYSMEM / PGSIZE) + npages_extmem;
+	else
+			npages = npages_basemem;
 
-    if(nvram_read(NVRAM_EXTLO) == 0xffff) {
-        // EXTMEM > 16M in blocks of 64k
-        size_t pextmem = nvram_read(NVRAM_EXTGT16LO) * (64 * 1024);
-        npages_extmem = ((16 * 1024 * 1024) + pextmem - (1 * 1024 * 1024)) / PGSIZE;
-    }
+	if(nvram_read(NVRAM_EXTLO) == 0xffff) {
+		// EXTMEM > 16M in blocks of 64k
+		size_t pextmem = nvram_read(NVRAM_EXTGT16LO) * (64 * 1024);
+		npages_extmem = ((16 * 1024 * 1024) + pextmem - (1 * 1024 * 1024)) / PGSIZE;
+	}
 
 	// Calculate the number of physical pages available in both base
 	// and extended memory.
@@ -164,11 +165,11 @@ i386_detect_memory(void)
 		npages_basemem * PGSIZE / 1024,
 		npages_extmem * PGSIZE / 1024, npages); // Missing arg added
     
-    //JOS is hardwired to support only 256M of physical memory
-    if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
-        npages = (255 * 1024 * 1024) / PGSIZE;
-        cprintf("Using only %uK of the available memory.\n", npages * PGSIZE/1024);
-    }
+	//JOS is hardwired to support only 256M of physical memory
+	if(npages > ((255 * 1024 * 1024)/PGSIZE)) {
+		npages = (255 * 1024 * 1024) / PGSIZE;
+		cprintf("Using only %uK of the available memory.\n", npages * PGSIZE/1024);
+	}
 
 }
 
@@ -351,7 +352,7 @@ x64_vm_init(void)
 	// Map all of physical memory at KERNBASE. We have detected the number
     // of physical pages to be npages.
 	// Ie.  the VA range [KERNBASE, npages*PGSIZE) should map to
-	//      the PA range [0, npages*PGSIZE - KERNBASE)
+	//      the PA range [0, npages*PGSIZE)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 	boot_map_region(pml4e, KERNBASE, (npages * PGSIZE), 0x0, PTE_W);
@@ -391,7 +392,7 @@ mem_init_mp(void)
 	// to as its kernel stack. CPU i's kernel stack grows down from virtual
 	// address kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP), and is
 	// divided into two pieces, just like the single stack you set up in
-	// mem_init:
+	// x86_vm_init:
 	//     * [kstacktop_i - KSTKSIZE, kstacktop_i)
 	//          -- backed by physical memory
 	//     * [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
@@ -725,7 +726,7 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create)
 // The programming logic and the hints are the same as pml4e_walk
 // and pdpe_walk.
 
-pte_t *
+	pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
@@ -1118,7 +1119,7 @@ check_page_alloc(void)
 	// if there's a page that shouldn't be on
 	// the free list, try to make sure it
 	// eventually causes trouble.
-	
+
 	for (pp0 = page_free_list, nfree = 0; pp0; pp0 = pp0->pp_link) {
 		#ifdef DEBUG
 		if ((uint64_t)pp0==0x800432fff0 || (uint64_t)pp0==0x8004330000)
@@ -1198,7 +1199,7 @@ check_page_alloc(void)
 
 //
 // Checks that the kernel part of virtual address space
-// has been setup roughly correctly (by mem_init()).
+// has been setup roughly correctly (by x64_vm_init()).
 //
 // This function doesn't test every corner case,
 // but it is a pretty good sanity check.
@@ -1490,7 +1491,7 @@ page_check(void)
 	assert(check_va2pa(boot_pml4e, mm1) == 0);
 	assert(check_va2pa(boot_pml4e, mm1+PGSIZE) == PGSIZE);
 	assert(check_va2pa(boot_pml4e, mm2) == 0);
-	cprintf("failing %x %x\n", mm2+PGSIZE, check_va2pa(boot_pml4e, mm2+PGSIZE));
+
 	assert(check_va2pa(boot_pml4e, mm2+PGSIZE) == ~0);
 	// check permissions
 	assert(*pml4e_walk(boot_pml4e, (void*) mm1, 0) & (PTE_W|PTE_PWT|PTE_PCD));
