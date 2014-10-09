@@ -435,8 +435,7 @@ page_fault_handler(struct Trapframe *tf)
 		
 		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
 		cprintf("page_fault_handler: ptr - 20: %x\n", ptr - 20);
-		// @@@ damn it, if I don't check 160 bytes, then the print infomation doesn't match the grade script. Damn!
-		user_mem_assert(curenv, (void*)(ptr - 20), 160, PTE_W);
+		user_mem_assert(curenv, (void*)(ptr - 20), 1, PTE_W);
 		
 		lcr3(curenv->env_cr3);
 		/*
