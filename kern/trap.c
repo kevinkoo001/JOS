@@ -423,9 +423,43 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
-
-
-
+	if (curenv->env_pgfault_upcall)
+	{
+		uint64_t prev_rsp = tf->tf_rsp;
+		
+		if (!(tf->tf_rsp >= UXSTACKTOP-PGSIZE && tf->tf_rsp < UXSTACKTOP))
+		{
+			tf->tf_rsp = UXSTACKTOP;
+		}
+		
+		lcr3(curenv->env_cr3);
+		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
+		user_mem_assert(curenv, (void*)ptr, 1, PTE_W);
+		/*
+		*(ptr - 1) = 0;
+		*(ptr - 2) = prev_rsp;
+		*(ptr - 3) = tf->tf_eflags;
+		*(ptr - 4) = tf->tf_rip;
+		*(struct PushRegs*)(ptr - 5) = tf->tf_regs;
+		*(ptr - 20) = tf->tf_err;
+		*(ptr - 21) = fault_va;*/
+		
+		*ptr = 0;
+		*(ptr - 1) = prev_rsp;
+		*(ptr - 2) = tf->tf_eflags;
+		*(ptr - 3) = tf->tf_rip;
+		*(struct PushRegs*)(ptr - 4) = tf->tf_regs;
+		*(ptr - 19) = tf->tf_err;
+		*(ptr - 20) = fault_va;
+		
+		tf->tf_rsp = (uintptr_t)(ptr - 20);
+		tf->tf_rip = (uintptr_t)curenv->env_pgfault_upcall;
+		
+		lcr3(boot_cr3);
+		
+		env_run(curenv);
+	}
+	
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 		curenv->env_id, fault_va, tf->tf_rip);

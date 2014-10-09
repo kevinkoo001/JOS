@@ -67,18 +67,23 @@ _pgfault_upcall:
 	// ways as registers become unavailable as scratch space.
 	//
 	// LAB 4: Your code here.
+	
 
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 4: Your code here.
+	
 
 	// Restore eflags from the stack.  After you do this, you can
 	// no longer use arithmetic operations or anything else that
 	// modifies eflags.
 	// LAB 4: Your code here.
+	
 
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
+	
 
 	// Return to re-execute the instruction that faulted.
 	// LAB 4: Your code here.
+	ret

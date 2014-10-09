@@ -477,8 +477,6 @@ load_icode(struct Env *e, uint8_t *binary)
 	
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
-	// @@@ Fixed another lethal bug here. Be extremely careful!!! 
-	// Don't do this: (void*)(USTACKTOP-PGSIZE)
 	region_alloc(e, (void*)(USTACKTOP - PGSIZE), PGSIZE);
 
 	// LAB 3: Your code here.
