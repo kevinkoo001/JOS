@@ -976,7 +976,10 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
 	// @@@ Get page-aligned addr of [va, va+len) range
-	uintptr_t vaCurrent = (uintptr_t)ROUNDDOWN(va, PGSIZE);
+	
+	// @@@ attention: do not rounddown!!! Or we cannot pass lab4 grade
+	//uintptr_t vaCurrent = (uintptr_t)ROUNDDOWN(va, PGSIZE);
+	uintptr_t vaCurrent = (uintptr_t)va;
 	uintptr_t vaLast = (uintptr_t)ROUNDUP(va + len, PGSIZE);
 
 	#ifdef DEBUG
@@ -986,7 +989,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	perm = perm | PTE_P;
 	pte_t* pte = NULL;
 	
-	for( ;vaCurrent < vaLast; vaCurrent += PGSIZE) {
+	for( ;vaCurrent < vaLast; vaCurrent = ROUNDUP(vaCurrent+1, PGSIZE)) {
 		// @@@ Set the current va as the first erroneous va if any
 		if(vaCurrent < PGSIZE)
 			user_mem_check_addr = (uintptr_t) va;

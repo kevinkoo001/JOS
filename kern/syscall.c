@@ -28,6 +28,7 @@ sys_cputs(const char *s, size_t len)
 	#endif
 	
 	// @@@ Defined at kern\pmap.c
+	//cprintf("sys_cputs: s: %x len: %x\n", s, len);
 	user_mem_assert(curenv, (char*)s, len, 0);
 
 	// Print the string supplied by the user.

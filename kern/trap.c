@@ -425,16 +425,20 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 	if (curenv->env_pgfault_upcall)
 	{
+		//cprintf("enter\n");
 		uint64_t prev_rsp = tf->tf_rsp;
 		
 		if (!(tf->tf_rsp >= UXSTACKTOP-PGSIZE && tf->tf_rsp < UXSTACKTOP))
-		{
 			tf->tf_rsp = UXSTACKTOP;
-		}
+		else
+			tf->tf_rsp -= 8;
+		
+		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
+		cprintf("page_fault_handler: ptr - 20: %x\n", ptr - 20);
+		// @@@ damn it, if I don't check 160 bytes, then the print infomation doesn't match the grade script. Damn!
+		user_mem_assert(curenv, (void*)(ptr - 20), 160, PTE_W);
 		
 		lcr3(curenv->env_cr3);
-		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
-		user_mem_assert(curenv, (void*)ptr, 1, PTE_W);
 		/*
 		*(ptr - 1) = 0;
 		*(ptr - 2) = prev_rsp;
@@ -444,18 +448,18 @@ page_fault_handler(struct Trapframe *tf)
 		*(ptr - 20) = tf->tf_err;
 		*(ptr - 21) = fault_va;*/
 		
-		*ptr = 0;
 		*(ptr - 1) = prev_rsp;
 		*(ptr - 2) = tf->tf_eflags;
 		*(ptr - 3) = tf->tf_rip;
-		*(struct PushRegs*)(ptr - 4) = tf->tf_regs;
+		*(struct PushRegs*)(ptr - 18) = tf->tf_regs;	// @@@ not -4, should be -18
 		*(ptr - 19) = tf->tf_err;
 		*(ptr - 20) = fault_va;
+		// @@@ Put the empty space (8B) for further use at the top of stack
+		//*(ptr - 20) = 0;
+		lcr3(boot_cr3);
 		
 		tf->tf_rsp = (uintptr_t)(ptr - 20);
 		tf->tf_rip = (uintptr_t)curenv->env_pgfault_upcall;
-		
-		lcr3(boot_cr3);
 		
 		env_run(curenv);
 	}

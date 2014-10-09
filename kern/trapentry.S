@@ -96,7 +96,6 @@ _alltraps:
 	subq $16, %rsp
 	movq $0, 0(%rsp)
 	movq $0, 8(%rsp)
-	// push in reverse order
 	movw %es, 0(%rsp)
 	movw %ds, 8(%rsp)
 	PUSHA
