@@ -431,11 +431,13 @@ page_fault_handler(struct Trapframe *tf)
 		if (!(tf->tf_rsp >= UXSTACKTOP-PGSIZE && tf->tf_rsp < UXSTACKTOP))
 			tf->tf_rsp = UXSTACKTOP;
 		else
+			// @@@ leave 8 bytes blank if it's not the first time enter UXSTACK
 			tf->tf_rsp -= 8;
 		
 		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
 		cprintf("page_fault_handler: ptr - 20: %x\n", ptr - 20);
-		user_mem_assert(curenv, (void*)(ptr - 20), 1, PTE_W);
+        // @@@ check if curenv has the perm to access exception stack
+		user_mem_assert(curenv, (void*)(ptr - 20), 160, PTE_W);
 		
 		lcr3(curenv->env_cr3);
 		/*
