@@ -25,7 +25,12 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-
+	cprintf("fault %x\n", addr);
+	if ((r = sys_page_alloc(0, ROUNDDOWN(addr, PGSIZE),
+				PTE_P|PTE_U|PTE_W)) < 0)
+		panic("allocating at %x in page fault handler: %e", addr, r);
+	snprintf((char*) addr, 100, "this string was faulted in at %x", addr);
+	
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.
@@ -35,7 +40,7 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
-	panic("pgfault not implemented");
+	//panic("pgfault not implemented");
 }
 
 //
@@ -55,9 +60,31 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	uint64_t pn_ = pn;
+	void* addr = (void*)(pn_ * PGSIZE);
+	
+	
+	
+	//panic("duppage not implemented");
 	return 0;
 }
+
+/*
+// @@@ dumb duppage
+static void
+duppage(envid_t dstenv, void *addr)
+{
+	int r;
+
+	// This is NOT what you should do in your fork.
+	if ((r = sys_page_alloc(dstenv, addr, PTE_P|PTE_U|PTE_W)) < 0)
+		panic("sys_page_alloc: %e", r);
+	if ((r = sys_page_map(dstenv, addr, 0, UTEMP, PTE_P|PTE_U|PTE_W)) < 0)
+		panic("sys_page_map: %e", r);
+	memmove(UTEMP, addr, PGSIZE);
+	if ((r = sys_page_unmap(0, UTEMP)) < 0)
+		panic("sys_page_unmap: %e", r);
+}*/
 
 //
 // User-level fork with copy-on-write.
@@ -79,7 +106,34 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	envid_t child_env;
+	uintptr_t addr;
+	
+	set_pgfault_handler(pgfault);
+	child_env = sys_exofork();
+	if (child_env < 0)
+		panic("fork: create new env failed!\n");
+	if (envid == 0) {
+		// We're the child.
+		// The copied value of the global variable 'thisenv'
+		// is no longer valid (it refers to the parent!).
+		// Fix it and return 0.
+		thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+	
+	// @@@ for parent:
+	for (addr = 0, addr < USTACKTOP; addr += PGSIZE)
+	{
+		
+	}
+	
+	if ((r = sys_env_set_status(child_env, ENV_RUNNABLE)) < 0)
+		panic("sys_env_set_status: %e", r);
+	
+	return child_env;
+	
+	//panic("fork not implemented");
 }
 
 // Challenge!

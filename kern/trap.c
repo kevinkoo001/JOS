@@ -435,7 +435,7 @@ page_fault_handler(struct Trapframe *tf)
 			tf->tf_rsp -= 8;
 		
 		uint64_t* ptr = (uint64_t*)tf->tf_rsp;
-		cprintf("page_fault_handler: ptr - 20: %x\n", ptr - 20);
+		//cprintf("page_fault_handler: ptr - 20: %x\n", ptr - 20);
         // @@@ check if curenv has the perm to access exception stack
 		user_mem_assert(curenv, (void*)(ptr - 20), 160, PTE_W);
 		
