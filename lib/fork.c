@@ -25,11 +25,14 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-	cprintf("fault %x\n", addr);
-	if ((r = sys_page_alloc(0, ROUNDDOWN(addr, PGSIZE),
-				PTE_P|PTE_U|PTE_W)) < 0)
-		panic("allocating at %x in page fault handler: %e", addr, r);
-	snprintf((char*) addr, 100, "this string was faulted in at %x", addr);
+	//cprintf("fault %x\n", addr);
+  
+	// @@@ THIS PART IS IMPORTANT!! OTHERWISE IT WILL ENCOUNTER ANOTHER PAGE FAULT!!
+	void* addr_align = (void*)ROUNDDOWN(utf->utf_fault_va, PGSIZE);
+	uint64_t pn = ((uint64_t)addr) / PGSIZE;
+	
+	if (!((uvpt[pn] & PTE_COW) && (err & FEC_WR)))
+		panic("pgfault: not COW page or not write page fault!");
 	
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -37,9 +40,29 @@ pgfault(struct UTrapframe *utf)
 	// Hint:
 	//   You should make three system calls.
 	//   No need to explicitly delete the old page's mapping.
-
+	
 	// LAB 4: Your code here.
-
+	
+	envid_t cur_id = sys_getenvid();
+	// @@@ Allocate a new page, map it at PFTEMP
+	// @@@ (1) int sys_page_alloc(envid_t envid, void *va, int perm);
+	if ((r = sys_page_alloc(cur_id, PFTEMP, PTE_P|PTE_U|PTE_W)) < 0)
+		panic("pgfault: allocating at %x in page fault handler: %e", addr, r);
+	
+	// @@@ Copy the data from the old page to the new page
+	// @@@ void* memcpy(void *dst, const void *src, size_t len);
+	memcpy(PFTEMP, addr_align, PGSIZE);
+	
+	// @@@ Move the new page to the old page's address
+	// @@@ (2) int sys_page_map(envid_t srcenv, void *srcva, envid_t dstenv, void *dstva, int perm);
+	if ((r = sys_page_map(cur_id, PFTEMP, cur_id, addr_align, PTE_P|PTE_U|PTE_W)) < 0)
+		panic("pgfault: moving %x to PFTEMP in page fault handler: %e", addr, r);
+	
+	// @@@ Clear the temporary pte in PFTEMP
+	// @@@ (3) int sys_page_unmap(envid_t envid, void *va)
+	if ((r = sys_page_unmap(cur_id, PFTEMP)) < 0)
+		panic("pgfault: unmap PFTEMP failed! %e", r);
+	
 	//panic("pgfault not implemented");
 }
 
@@ -60,11 +83,31 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	uint64_t pn_ = pn;
-	void* addr = (void*)(pn_ * PGSIZE);
+	uint64_t pn_64 = pn;
+	void* addr = (void*)(pn_64 * PGSIZE);
+  
+	envid_t cur_id = sys_getenvid();
+	int perm = uvpt[pn_64] & 0xfff;
 	
-	
-	
+	// @@@ Check if all va has present bit
+	// @@@ Check if va is writable/COW-able
+	if ((uvpt[pn_64] & PTE_W) || (uvpt[pn_64] & PTE_COW))
+	{
+		// @@@ map the page copy-on-write into the address space of the child
+		if ((r = sys_page_map(cur_id, addr, envid, addr, PTE_P | PTE_U | PTE_COW)) < 0)
+			panic("duppage: mapping 0x%x failed!: %e", addr, r);
+		// @@@ remap the page copy-on-write in its own address space
+		// @@@ cannot include perm here because we don't want child to have PTE_W
+		if ((r = sys_page_map(cur_id, addr, cur_id, addr, PTE_P | PTE_U | PTE_COW)) < 0)
+			panic("duppage: mapping 0x%x failed!: %e", addr, r);
+	}
+	else
+	{
+		// @@@ copy parent's pte to child
+		if ((r = sys_page_map(cur_id, addr, envid, addr, PTE_P | PTE_U | perm)) < 0)
+			panic("duppage: map %x failed!: %e", addr, r);
+	}
+
 	//panic("duppage not implemented");
 	return 0;
 }
@@ -108,12 +151,15 @@ fork(void)
 	// LAB 4: Your code here.
 	envid_t child_env;
 	uintptr_t addr;
+	envid_t cur_id = sys_getenvid();
 	
+	// @@@ allocate pgfault for current enviroment
 	set_pgfault_handler(pgfault);
+	
 	child_env = sys_exofork();
 	if (child_env < 0)
 		panic("fork: create new env failed!\n");
-	if (envid == 0) {
+	if (child_env == 0) {
 		// We're the child.
 		// The copied value of the global variable 'thisenv'
 		// is no longer valid (it refers to the parent!).
@@ -122,15 +168,38 @@ fork(void)
 		return 0;
 	}
 	
+	// @@@ allocate the user exception stack for child environment
+	if (sys_page_alloc(child_env, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0)
+		panic("fork: alloc exception stack failed!");
+	
+	// @@@ set the user page fault entrypoint
+	extern void _pgfault_upcall(void);
+	if (sys_env_set_pgfault_upcall(child_env, _pgfault_upcall) < 0)
+		panic("fork: upcall failed!");
+	
 	// @@@ for parent:
-	for (addr = 0, addr < USTACKTOP; addr += PGSIZE)
-	{
-		
-	}
+	// @@@ PGNUM(la) in inc/mmu.h
+	//cprintf("Before enter for\n");
+	for (addr = 0; addr < USTACKTOP - PGSIZE; addr += PGSIZE)
+		if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
+			duppage(child_env, PGNUM(addr));
 	
-	if ((r = sys_env_set_status(child_env, ENV_RUNNABLE)) < 0)
-		panic("sys_env_set_status: %e", r);
+	// @@@ copy stack from parent to child
+	if (sys_page_alloc(cur_id, PFTEMP, PTE_P|PTE_U|PTE_W) < 0)
+		panic("fork: allocating PFTEMP failed!");
+	memcpy((void*)PFTEMP, (void*)(USTACKTOP - PGSIZE), PGSIZE);
 	
+	if (sys_page_map(cur_id, PFTEMP, child_env, (void*)(USTACKTOP - PGSIZE), PTE_W | PTE_U | PTE_P) < 0)
+ 		panic("fork: map PFTEMP to child's stack failed!");
+	
+	if (sys_page_unmap(cur_id, (void*)PFTEMP) < 0)
+		panic("fork: ummap PFTEMP failed!");
+	
+	// @@@ mark it runnable
+	if ((sys_env_set_status(child_env, ENV_RUNNABLE)) < 0)
+		panic("fork: set runnable failed!\n");
+	
+	// cprintf("fork: finished!\n");
 	return child_env;
 	
 	//panic("fork not implemented");
