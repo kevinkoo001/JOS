@@ -104,6 +104,24 @@ extern void handle_simderr();
 extern void handle_syscall();
 extern void handle_default();
 
+// @@@ lab4 part:
+extern void handle_irq0();
+extern void handle_irq1();
+extern void handle_irq2();
+extern void handle_irq3();
+extern void handle_irq4();
+extern void handle_irq5();
+extern void handle_irq6();
+extern void handle_irq7();
+extern void handle_irq8();
+extern void handle_irq9();
+extern void handle_irq10();
+extern void handle_irq11();
+extern void handle_irq12();
+extern void handle_irq13();
+extern void handle_irq14();
+extern void handle_irq15();
+
 void
 trap_init(void)
 {
@@ -132,6 +150,24 @@ trap_init(void)
 	// @@@ syscall should be user privilege
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, handle_syscall, 3);
 	SETGATE(idt[T_DEFAULT], 0, GD_KT, handle_default, 0);
+	
+	// @@@ lab4 part:
+	SETGATE(idt[IRQ_OFFSET], 0, GD_KT, handle_irq0, 0);
+	SETGATE(idt[IRQ_OFFSET+1], 0, GD_KT, handle_irq1, 0);
+	SETGATE(idt[IRQ_OFFSET+2], 0, GD_KT, handle_irq2, 0);
+	SETGATE(idt[IRQ_OFFSET+3], 0, GD_KT, handle_irq3, 0);
+	SETGATE(idt[IRQ_OFFSET+4], 0, GD_KT, handle_irq4, 0);
+	SETGATE(idt[IRQ_OFFSET+5], 0, GD_KT, handle_irq5, 0);
+	SETGATE(idt[IRQ_OFFSET+6], 0, GD_KT, handle_irq6, 0);
+	SETGATE(idt[IRQ_OFFSET+7], 0, GD_KT, handle_irq7, 0);
+	SETGATE(idt[IRQ_OFFSET+8], 0, GD_KT, handle_irq8, 0);
+	SETGATE(idt[IRQ_OFFSET+9], 0, GD_KT, handle_irq9, 0);
+	SETGATE(idt[IRQ_OFFSET+10], 0, GD_KT, handle_irq10, 0);
+	SETGATE(idt[IRQ_OFFSET+11], 0, GD_KT, handle_irq11, 0);
+	SETGATE(idt[IRQ_OFFSET+12], 0, GD_KT, handle_irq12, 0);
+	SETGATE(idt[IRQ_OFFSET+13], 0, GD_KT, handle_irq13, 0);
+	SETGATE(idt[IRQ_OFFSET+14], 0, GD_KT, handle_irq14, 0);
+	SETGATE(idt[IRQ_OFFSET+15], 0, GD_KT, handle_irq15, 0);
 	
     idt_pd.pd_lim = sizeof(idt)-1;
     idt_pd.pd_base = (uint64_t)idt;
@@ -300,6 +336,12 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER)
+	{
+		lapic_eoi();	// @@@ I have no idea what this is.
+		sched_yield();
+		return;
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
