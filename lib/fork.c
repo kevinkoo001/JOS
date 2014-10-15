@@ -180,9 +180,22 @@ fork(void)
 	// @@@ for parent:
 	// @@@ PGNUM(la) in inc/mmu.h
 	//cprintf("Before enter for\n");
-	for (addr = 0; addr < USTACKTOP - PGSIZE; addr += PGSIZE)
-		if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
-			duppage(child_env, PGNUM(addr));
+	// @@@ this is the tricky part, copied from dumbfork
+	extern unsigned char end[];
+	for (addr = UTEXT; addr < (uintptr_t)end; addr += PGSIZE)
+		//if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
+		if (uvpml4e[VPML4E(addr)] & PTE_P)
+			if (uvpde[VPDPE(addr)] & PTE_P)
+				if (uvpd[VPD(addr)] & PTE_P)
+					if (uvpt[PGNUM(addr)] & (PTE_P | PTE_U))
+						duppage(child_env, PGNUM(addr));
+	
+	/*duppage(child_env, PGNUM(0x800000));
+	duppage(child_env, PGNUM(0x801000));
+	duppage(child_env, PGNUM(0x802000));
+	duppage(child_env, PGNUM(0x803000));
+	duppage(child_env, PGNUM(0x804000));*/
+	//duppage(child_env, PGNUM(0xef7fd000));
 	
 	// @@@ copy stack from parent to child
 	if (sys_page_alloc(cur_id, PFTEMP, PTE_P|PTE_U|PTE_W) < 0)

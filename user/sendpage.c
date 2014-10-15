@@ -17,7 +17,6 @@ umain(int argc, char **argv)
 	if ((who = fork()) == 0) {
 		// Child
 		cprintf("I am child! thisenv->env_id: %x\n", thisenv->env_id);
-		sys_page_alloc(thisenv->env_id, TEMP_ADDR_CHILD, PTE_P | PTE_W | PTE_U);
 		ipc_recv(&who, TEMP_ADDR_CHILD, 0);
 		cprintf("%x got message : %s\n", who, TEMP_ADDR_CHILD);
 		if (strncmp(TEMP_ADDR_CHILD, str1, strlen(str1)) == 0)

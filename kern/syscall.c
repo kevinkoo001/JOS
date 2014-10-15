@@ -371,6 +371,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	if (!newEnv->env_ipc_recving)
 		return -E_IPC_NOT_RECV;
 	
+	newEnv->env_ipc_perm = 0;
 	// @@@ check if srcva < UTOP
 	if ((uintptr_t)srcva < UTOP)
 	{
@@ -391,6 +392,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		// @@@ -E_NO_MEM if there's not enough memory to map srcva in envid's address space.
 		if ((uintptr_t)newEnv->env_ipc_dstva < UTOP)
 		{
+			if (newEnv->env_ipc_dstva != ROUNDDOWN(newEnv->env_ipc_dstva, PGSIZE))
+				return -E_INVAL;
 			// @@@ used to set det va as srcva too, cause big trouble.
 			if (page_insert(newEnv->env_pml4e, pp, newEnv->env_ipc_dstva, perm) < 0)
 				return -E_NO_MEM;
@@ -414,6 +417,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	newEnv->env_ipc_from = curenv->env_id;
 	newEnv->env_ipc_value = value;
 	newEnv->env_status = ENV_RUNNABLE;
+	// @@@ (Hint: does the sys_ipc_recv function ever actually return?)
 	newEnv->env_tf.tf_regs.reg_rax = 0;
 	
 	return 0;
@@ -443,9 +447,11 @@ sys_ipc_recv(void *dstva)
 		else
 			curenv->env_ipc_dstva = dstva;
 	}
-	curenv->env_tf.tf_regs.reg_rax = 0;
+	
 	curenv->env_ipc_recving = 1;
 	curenv->env_status = ENV_NOT_RUNNABLE;
+	// @@@ this function doesn't return either
+	curenv->env_tf.tf_regs.reg_rax = 0;
 	sys_yield();
 	//panic("sys_ipc_recv not implemented");
 	return 0;
