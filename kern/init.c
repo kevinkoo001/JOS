@@ -33,7 +33,7 @@ i386_init(void)
 	// Before doing anything else, complete the ELF loading process.
 	// Clear the uninitialized global data (BSS) section of our program.
 	// This ensures that all static/global variables start out zero.
-	memset(edata, 0, end - edata);
+	memset(edata, 0, end - edata);		// Adrian: initialize from edata to end-edata
 
 	// Initialize the console.
 	// Can't call cprintf until after we do this!
@@ -60,6 +60,7 @@ i386_init(void)
 
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
+	lock_kernel();
 
 	// Starting non-boot CPUs
 	boot_aps();
@@ -72,7 +73,9 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
+
 	ENV_CREATE(user_icode, ENV_TYPE_USER);
+
 #endif // TEST*
 
 	// Should not be necessary - drains keyboard because interrupt has given up.
@@ -111,6 +114,7 @@ boot_aps(void)
 		while(c->cpu_status != CPU_STARTED)
 			;
 	}
+
 }
 
 // Setup code for APs
@@ -131,6 +135,8 @@ mp_main(void)
 	// only one CPU can enter the scheduler at a time!
 	//
 	// Your code here:
+	lock_kernel();
+	sched_yield();
 
 	// Remove this after you finish Exercise 4
 	for (;;);

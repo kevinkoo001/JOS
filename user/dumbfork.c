@@ -62,10 +62,13 @@ dumbfork(void)
 		return 0;
 	}
 
+	addr = (uint8_t*) UTEXT;
+	cprintf("addr: %x, end: %x\n", addr, end);
+	
 	// We're the parent.
 	// Eagerly copy our entire address space into the child.
 	// This is NOT what you should do in your fork implementation.
-	for (addr = (uint8_t*) UTEXT; addr < end; addr += PGSIZE)
+	for (; addr < end; addr += PGSIZE)
 		duppage(envid, addr);
 
 	// Also copy the stack we are currently running on.

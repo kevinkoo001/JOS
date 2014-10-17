@@ -39,15 +39,15 @@
  *                     |      Invalid Memory (*)      | --/--  KSTKGAP    |
  *                     +------------------------------+                   |
  *                     |     CPU1's Kernel Stack      | RW/--  KSTKSIZE   |
- *                     | - - - - - - - - - - - - - - -|                 PTSIZE
+ *                     | - - - - - - - - - - - - - - -|                 PTSIZE		Adrian: PTSIZE equals to 2MB.
  *                     |      Invalid Memory (*)      | --/--  KSTKGAP    |
  *                     +------------------------------+                   |
  *                     :              .               :                   |
  *                     :              .               :                   |
  *    MMIOLIM ------>  +------------------------------+ 0x8003e00000    --+
- *                     |       Memory-mapped I/O      | RW/--  PTSIZE
+ *                     |       Memory-mapped I/O      | RW/--  PTSIZE				2MB
  * ULIM, MMIOBASE -->  +------------------------------+ 0x8003c00000
- *                     |  Cur. Page Table (User R-)   | R-/R-  PTSIZE
+ *                     |  Cur. Page Table (User R-)   | R-/R-  PTSIZE				2MB
  *    UPAGES    ---->  +------------------------------+ 0x8000a00000
  *                     |           RO ENVS            | R-/R-  PTSIZE
  * UTOP,UENVS ------>  +------------------------------+ 0x8000800000
@@ -55,7 +55,7 @@
  *                     .                              .
  *                     .                              .
  * UXSTACKTOP ------>  +------------------------------+ 0xef800000
- *                     |     User Exception Stack     | RW/RW  PGSIZE
+ *                     |     User Exception Stack     | RW/RW  PGSIZE				Adrian: PGSIZE equals to 4KB
  *                     +------------------------------+ 0xef7ff000
  *                     |       Empty Memory (*)       | --/--  PGSIZE
  *    USTACKTOP  --->  +------------------------------+ 0xef7fe000
@@ -149,7 +149,7 @@
 
 #ifndef __ASSEMBLER__
 
-typedef uint64_t pml4e_t;
+typedef uint64_t pml4e_t;		// Adrian: don't know what these are, all uint64_t.
 typedef uint64_t pdpe_t;
 typedef uint64_t pte_t;
 typedef uint64_t pde_t;
@@ -169,13 +169,13 @@ typedef uint64_t pde_t;
  * will always be available at virtual address (UVPT + (UVPT >> PGSHIFT)), to
  * which uvpd is set in entry.S.
  */
-extern volatile pte_t uvpt[];     // VA of "virtual page table"
-extern volatile pde_t uvpd[];     // VA of current page directory
+extern volatile pte_t uvpt[];     // VA of "virtual page table"		// Adrian: extern means global, volatile means no optimization,
+extern volatile pde_t uvpd[];     // VA of current page directory	// easy to change, no cache.
 extern volatile pde_t uvpde[];     // VA of current page directory pointer
 extern volatile pde_t uvpml4e[];     // VA of current page map level 4
 #endif
 
-LIST_HEAD(Page_list,Page);
+LIST_HEAD(Page_list,Page);			// Adrian: pls refer to line 109 in inc/queue.h
 typedef LIST_ENTRY(Page) Page_LIST_entry_t;
 /*
  * Page descriptor structures, mapped at UPAGES.

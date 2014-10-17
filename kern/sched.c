@@ -20,7 +20,7 @@ sched_yield(void)
 	// last running.  Switch to the first such environment found.
 	//
 	// If no envs are runnable, but the environment previously
-	// running on this CPU is still ENV_RUNNING, it's okay to
+	// running on this CPU is still ENV_RUNNING, it's okay to 
 	// choose that environment.
 	//
 	// Never choose an environment that's currently running on
@@ -29,6 +29,27 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	// @@@ check from the next env after running env on one cpu
+	int i, j;
+	//cprintf("[DEBUG4] thiscpu->cpu_env->env_id: %x\n", thiscpu->cpu_env->env_id);
+	int leo;		// @@@ last env offset
+	
+	if (curenv)
+		// @@@ without this there will be page fault
+		leo = ENVX(curenv->env_id);
+	else
+		leo = 0;
+	
+	for (i = leo+1; i<leo+NENV+1; i++)
+	//for (i = 0; i < NENV; i++)
+	{
+		j = i % NENV;
+		if (envs[j].env_status == ENV_RUNNABLE)
+			env_run(&envs[j]);
+	}
+	
+	if (curenv && curenv->env_status == ENV_RUNNING)
+		env_run(curenv);
 
 	// sched_halt never returns
 	sched_halt();

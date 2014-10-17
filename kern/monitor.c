@@ -27,6 +27,8 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	// Adrian
+	{ "backtrace", "Display stack backtrace information", mon_backtrace },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -48,13 +50,13 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	extern char _start[], entry[], etext[], edata[], end[];
 
 	cprintf("Special kernel symbols:\n");
-	cprintf("  _start                  %08x (phys)\n", _start);
-	cprintf("  entry  %08x (virt)  %08x (phys)\n", entry, entry - KERNBASE);
-	cprintf("  etext  %08x (virt)  %08x (phys)\n", etext, etext - KERNBASE);
-	cprintf("  edata  %08x (virt)  %08x (phys)\n", edata, edata - KERNBASE);
-	cprintf("  end    %08x (virt)  %08x (phys)\n", end, end - KERNBASE);
+	cprintf("  _start                  %08x (phys)\n", _start);		// Adrian below: _start = RELOC(entry) at line 43 of entry.S
+	cprintf("  entry  %08x (virt)  %08x (phys)\n", entry, entry - KERNBASE);	// u can see entry - KERNBASE = _start
+	cprintf("  etext  %08x (virt)  %08x (phys)\n", etext, etext - KERNBASE);	// should be memory space storing code
+	cprintf("  edata  %08x (virt)  %08x (phys)\n", edata, edata - KERNBASE);	// should be memory space storing data
+	cprintf("  end    %08x (virt)  %08x (phys)\n", end, end - KERNBASE);		// end points to the end of the kernel's bss segment
 	cprintf("Kernel executable memory footprint: %dKB\n",
-		ROUNDUP(end - entry, 1024) / 1024);
+		ROUNDUP(end - entry, 1024) / 1024);		// last address minus first address of kernel, don't know why need to be divided by 1024 again
 	return 0;
 }
 
@@ -62,6 +64,36 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	uint64_t rbp = read_rbp();
+	uint64_t rip = 0;
+	read_rip(rip);
+	
+	struct Ripdebuginfo info;
+	
+	int i;
+	cprintf("Stack backtrace:\n");
+	
+	while(rbp != 0)
+	{
+		i = debuginfo_rip(rip, &info);
+		int j = 1;
+		cprintf("  rbp %016x  rip %016x\n", rbp, rip);
+		if(i==0)
+		{
+			cprintf("       %s:%d: %s+%016x  args:%d", info.rip_file, info.rip_line, 
+				info.rip_fn_name, (rip-info.rip_fn_addr), info.rip_fn_narg);
+			for(j=1;j<=info.rip_fn_narg;j++)
+			{
+				if(j==1)
+					cprintf("  %016x", *(uint32_t *)(rbp-4));
+				else
+					cprintf("  %016x", *(uint32_t *)(rbp-j*8));
+			}
+			cprintf("\n");
+		}
+		rip = *(uint64_t *)(rbp + 8);
+		rbp = *(uint64_t *)(rbp);
+	}
 	return 0;
 }
 
@@ -129,3 +161,4 @@ monitor(struct Trapframe *tf)
 				break;
 	}
 }
+

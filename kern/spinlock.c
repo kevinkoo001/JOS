@@ -88,8 +88,12 @@ spin_unlock(struct spinlock *lk)
 		uint32_t pcs[10];
 		// Nab the acquiring EIP chain before it gets released
 		memmove(pcs, lk->pcs, sizeof pcs);
-		cprintf("CPU %d cannot release %s: held by CPU %d\nAcquired at:", 
-			cpunum(), lk->name, lk->cpu->cpu_id);
+		if (!lk->cpu) 
+			cprintf("CPU %d cannot release %s: not held by any CPU\nAcquired at:", 
+				cpunum(), lk->name);
+		else 
+			cprintf("CPU %d cannot release %s: held by CPU %d\nAcquired at:", 
+				cpunum(), lk->name, lk->cpu->cpu_id);
 		for (i = 0; i < 10 && pcs[i]; i++) {
 			struct Ripdebuginfo info;
 			if (debuginfo_rip(pcs[i], &info) >= 0)

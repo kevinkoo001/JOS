@@ -16,6 +16,7 @@ umain(int argc, char **argv)
 
 	if ((who = fork()) == 0) {
 		// Child
+		cprintf("I am child! thisenv->env_id: %x\n", thisenv->env_id);
 		ipc_recv(&who, TEMP_ADDR_CHILD, 0);
 		cprintf("%x got message : %s\n", who, TEMP_ADDR_CHILD);
 		if (strncmp(TEMP_ADDR_CHILD, str1, strlen(str1)) == 0)
@@ -27,6 +28,7 @@ umain(int argc, char **argv)
 	}
 
 	// Parent
+	cprintf("I am parent! thisenv->env_id: %x\n", thisenv->env_id);
 	sys_page_alloc(thisenv->env_id, TEMP_ADDR, PTE_P | PTE_W | PTE_U);
 	memcpy(TEMP_ADDR, str1, strlen(str1) + 1);
 	ipc_send(who, 0, TEMP_ADDR, PTE_P | PTE_W | PTE_U);
