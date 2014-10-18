@@ -29,6 +29,7 @@
 struct File {
 	char f_name[MAXNAMELEN];	// filename
 	off_t f_size;			// file size in bytes
+	// @@@ Represent file or directory
 	uint32_t f_type;		// file type
 
 	// Block pointers.
