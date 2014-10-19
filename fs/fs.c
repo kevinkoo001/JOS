@@ -56,31 +56,67 @@ fs_init(void)
 // Returns:
 //	0 on success (but note that *ppdiskbno might equal 0).
 //	-E_NOT_FOUND if the function needed to allocate an indirect block, but
-//		alloc was 0.
-//	-E_NO_DISK if there's no space on the disk for an indirect block.
-//	-E_INVAL if filebno is out of range (it's >= NDIRECT + NINDIRECT).
+//		alloc was 0. (OK)
+//	-E_NO_DISK if there's no space on the disk for an indirect block. 
+//	-E_INVAL if filebno is out of range (it's >= NDIRECT + NINDIRECT). (OK)
 //
 // Analogy: This is like pgdir_walk for files.
 // Hint: Don't forget to clear any block you allocate.
 static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
-        // LAB 5: Your code here.
-        panic("file_block_walk not implemented");
+	// LAB 5: Your code here.
+	// @@@ NDIRECT = 10, NINDIRECT = (BLKSIZE / 4) @inc\fs.h
+	if (filebno >= NDIRECT + NINDIRECT)
+		return -E_INVAL;
+	
+	if (!(f->f_indirect) && !alloc)
+		return -E_NOT_FOUND;
+		
+	if (filebno < NDIRECT) {
+		*ppdiskbno = f->f_direct + (sizeof(uint32_t) * NDIRECT);
+		return 0;
+	}
+	
+	// @@@ In this part, we might need alloc_block(), but where is it???
+	// @@@ Need to be fixed (WRONG!)
+	uint64_t f_indir_pp = (uint64_t)f->f_indirect;
+	if (filebno >= NDIRECT && alloc) {
+		envid_t cur_id = sys_getenvid();
+		if (sys_page_alloc(cur_id, (void*)f_indir_pp, PTE_P | PTE_U | PTE_W) < 0)
+			return -E_NO_DISK;
+		*ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * NINDIRECT);
+	}
+	
+	return 0;
+	// panic("file_block_walk not implemented");
 }
 
 // Set *blk to the address in memory where the filebno'th
 // block of file 'f' would be mapped.
 //
 // Returns 0 on success, < 0 on error.  Errors are:
-//	-E_NO_DISK if a block needed to be allocated but the disk is full.
-//	-E_INVAL if filebno is out of range.
+//	-E_NO_DISK if a block needed to be allocated but the disk is full. 
+//	-E_INVAL if filebno is out of range. (OK)
 //
 int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
 	// LAB 5: Your code here.
-	panic("file_block_walk not implemented");
+	int r;
+	uint32_t *ppdiskbno;
+	if (filebno >= NDIRECT + NINDIRECT)
+		return -E_INVAL;
+	
+	// @@@ Need to be fixed (WRONG!)
+	/*
+	if ((file_block_walk(f, filebno, &ppdiskbno, 1)) < 0)
+		return -E_INVAL;
+	*blk = diskaddr(*ppdiskbno);
+	*/
+	
+	return 0;
+	//panic("file_block_walk not implemented");
 }
 
 // Try to find a file named "name" in dir.  If so, set *file to it.
