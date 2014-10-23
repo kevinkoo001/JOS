@@ -57,7 +57,7 @@ fs_init(void)
 //	0 on success (but note that *ppdiskbno might equal 0).
 //	-E_NOT_FOUND if the function needed to allocate an indirect block, but
 //		alloc was 0. (OK)
-//	-E_NO_DISK if there's no space on the disk for an indirect block. 
+//	-E_NO_DISK if there's no space on the disk for an indirect block. (OK)
 //	-E_INVAL if filebno is out of range (it's >= NDIRECT + NINDIRECT). (OK)
 //
 // Analogy: This is like pgdir_walk for files.
@@ -67,25 +67,26 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 {
 	// LAB 5: Your code here.
 	// @@@ NDIRECT = 10, NINDIRECT = (BLKSIZE / 4) @inc\fs.h
+	if ((f->f_indirect) && !alloc)
+		return -E_NOT_FOUND;
+		
 	if (filebno >= NDIRECT + NINDIRECT)
 		return -E_INVAL;
 	
-	if (!(f->f_indirect) && !alloc)
-		return -E_NOT_FOUND;
-		
+	// @@@ Case1: filebo is smaller than NDIRECT
 	if (filebno < NDIRECT) {
-		*ppdiskbno = f->f_direct + (sizeof(uint32_t) * NDIRECT);
+		*ppdiskbno = f->f_direct + (sizeof(uint32_t) * filebno);
 		return 0;
 	}
 	
-	// @@@ In this part, we might need alloc_block(), but where is it???
-	// @@@ Need to be fixed (WRONG!)
+	// @@@ Case2: filebo is larger than NDIRECT
 	uint64_t f_indir_pp = (uint64_t)f->f_indirect;
 	if (filebno >= NDIRECT && alloc) {
+		// @@@ check if there's no space on the disk for an indirect block
 		envid_t cur_id = sys_getenvid();
 		if (sys_page_alloc(cur_id, (void*)f_indir_pp, PTE_P | PTE_U | PTE_W) < 0)
 			return -E_NO_DISK;
-		*ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * NINDIRECT);
+		*ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * filebno);
 	}
 	
 	return 0;
@@ -96,7 +97,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 // block of file 'f' would be mapped.
 //
 // Returns 0 on success, < 0 on error.  Errors are:
-//	-E_NO_DISK if a block needed to be allocated but the disk is full. 
+//	-E_NO_DISK if a block needed to be allocated but the disk is full. (OK) 
 //	-E_INVAL if filebno is out of range. (OK)
 //
 int
@@ -105,15 +106,11 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
 	// LAB 5: Your code here.
 	int r;
 	uint32_t *ppdiskbno;
-	if (filebno >= NDIRECT + NINDIRECT)
-		return -E_INVAL;
 	
-	// @@@ Need to be fixed (WRONG!)
-	/*
-	if ((file_block_walk(f, filebno, &ppdiskbno, 1)) < 0)
+	//@@@ Errors will be checked in file_block_walk()
+	if (file_block_walk(f, filebno, &ppdiskbno, 1) < 0)
 		return -E_INVAL;
 	*blk = diskaddr(*ppdiskbno);
-	*/
 	
 	return 0;
 	//panic("file_block_walk not implemented");

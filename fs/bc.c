@@ -35,7 +35,7 @@ bc_pgfault(struct UTrapframe *utf)
 	// LAB 5: you code here:
 	
 	// @@@ Note that addr may not be aligned to a block boundary 
-	void *diskBlockVa = ROUNDDOWN(diskaddr(blockno), BLKSIZE);
+	void* diskBlockVa = ROUNDDOWN(diskaddr(blockno), BLKSIZE);
 	
 	// @@ int sys_page_alloc(envid_t envid, void *va, int perm) @lib\syscall.c
 	envid_t cur_id = sys_getenvid();
@@ -43,9 +43,9 @@ bc_pgfault(struct UTrapframe *utf)
 		panic("bc_pgfault: alloc for diskBlock failed!");
 
 	// @@@ Note that ide_read operates in sectors, not blocks
-	// @@@ BLKSECTS, BLKSIZE, SECTSIZE @inc\fs.h and @fs\fs.h
+	// @@@ BLKSECTS, BLKSIZE @inc\fs.h and SECTSIZE @fs\fs.h
 	// @@@ int ide_read(uint32_t secno, void *dst, size_t nsecs) @fs\ide.c;
-	if ((r = ide_read(blockno*BLKSECTS, diskBlockVa, BLKSIZE/SECTSIZE)) < 0)
+	if ((r = ide_read(blockno * BLKSECTS, diskBlockVa, BLKSECTS)) < 0)
 		panic("bc_pgfault: reading the contents of the block failed!");
 
 }
