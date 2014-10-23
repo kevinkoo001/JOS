@@ -108,8 +108,8 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
 	uint32_t *ppdiskbno;
 	
 	//@@@ Errors will be checked in file_block_walk()
-	if (file_block_walk(f, filebno, &ppdiskbno, 1) < 0)
-		return -E_INVAL;
+	if ((r = file_block_walk(f, filebno, &ppdiskbno, 1)) < 0)
+		return r;
 	*blk = diskaddr(*ppdiskbno);
 	
 	return 0;
