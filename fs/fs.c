@@ -67,7 +67,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 {
 	// LAB 5: Your code here.
 	// @@@ NDIRECT = 10, NINDIRECT = (BLKSIZE / 4) @inc\fs.h
-	if ((f->f_indirect) && !alloc)
+	if ((filebno > f->f_size/BLKSIZE) && !alloc)
 		return -E_NOT_FOUND;
 		
 	if (filebno >= NDIRECT + NINDIRECT)
@@ -75,20 +75,15 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 	
 	// @@@ Case1: filebo is smaller than NDIRECT
 	if (filebno < NDIRECT) {
-		*ppdiskbno = f->f_direct + (sizeof(uint32_t) * filebno);
-		return 0;
+		uint64_t f_dir_pp = (uint64_t)f->f_direct;
+		*ppdiskbno = (void*)f_dir_pp + (sizeof(uint32_t) * filebno);
 	}
-	
 	// @@@ Case2: filebo is larger than NDIRECT
-	uint64_t f_indir_pp = (uint64_t)f->f_indirect;
-	if (filebno >= NDIRECT && alloc) {
-		// @@@ check if there's no space on the disk for an indirect block
-		envid_t cur_id = sys_getenvid();
-		if (sys_page_alloc(cur_id, (void*)f_indir_pp, PTE_P | PTE_U | PTE_W) < 0)
-			return -E_NO_DISK;
+	else {
+		// @@@ get the block number in block of indirect block pointers
+		uint64_t f_indir_pp = (uint64_t)f->f_indirect;
 		*ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * filebno);
 	}
-	
 	return 0;
 	// panic("file_block_walk not implemented");
 }
@@ -108,7 +103,7 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
 	uint32_t *ppdiskbno;
 	
 	//@@@ Errors will be checked in file_block_walk()
-	if ((r = file_block_walk(f, filebno, &ppdiskbno, 1)) < 0)
+	if ((r = file_block_walk(f, filebno, &ppdiskbno, 0)) < 0)
 		return r;
 	*blk = diskaddr(*ppdiskbno);
 	

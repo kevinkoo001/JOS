@@ -520,6 +520,7 @@ env_create(uint8_t *binary, enum EnvType type)
 	
 	if (type == ENV_TYPE_FS) {
 		newenv->env_type = ENV_TYPE_FS;
+		// @@@ refer http://en.wikipedia.org/wiki/IOPL
 		newenv->env_tf.tf_eflags |= FL_IOPL_3;
 	}
 }
