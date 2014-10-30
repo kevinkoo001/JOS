@@ -145,7 +145,7 @@ sys_env_set_status(envid_t envid, int status)
 
 // Set envid's trap frame to 'tf'.
 // tf is modified to make sure that user environments always run at code
-// protection level 3 (CPL 3) with interrupts enabled.
+// protection level 3 (CPL 3) with interrupts enabled.		@@@ Do we need to care about this?
 //
 // Returns 0 on success, < 0 on error.  Errors are:
 //	-E_BAD_ENV if environment envid doesn't currently exist,
@@ -156,7 +156,15 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env* newEnv;
+	
+	if (envid2env(envid, &newEnv, 1) < 0)
+		return -E_BAD_ENV;
+	
+	user_mem_assert(newEnv, tf, sizeof(struct Trapframe),PTE_U | PTE_P);
+	newEnv->env_tf = *tf;
+	return 0;
+	//panic("sys_env_set_trapframe not implemented");
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -531,6 +539,10 @@ syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, 
 			return ret;
 		case SYS_ipc_recv:
 			ret = sys_ipc_recv((void*)a1);
+			return ret;
+		// @@@ lab5 for spawn
+		case SYS_env_set_trapframe:
+			ret = sys_env_set_trapframe((envid_t)a1, (struct Trapframe*)a2);
 			return ret;
 		// @@@ In case of other system call
 		default:

@@ -75,14 +75,17 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 	
 	// @@@ Case1: filebo is smaller than NDIRECT
 	if (filebno < NDIRECT) {
-		uint64_t f_dir_pp = (uint64_t)f->f_direct;
-		*ppdiskbno = (void*)f_dir_pp + (sizeof(uint32_t) * filebno);
+		//uint64_t f_dir_pp = (uint64_t)f->f_direct;
+		// @@@ *ppdiskbno = (void*)f_dir_pp + (sizeof(uint32_t) * filebno);
+		*ppdiskbno = (uint32_t*)f->f_direct + filebno;
 	}
 	// @@@ Case2: filebo is larger than NDIRECT
 	else {
 		// @@@ get the block number in block of indirect block pointers
-		uint64_t f_indir_pp = (uint64_t)f->f_indirect;
-		*ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * filebno);
+		// @@@ uint64_t f_indir_pp = (uint64_t)f->f_indirect;
+		// @@@ *ppdiskbno = (void*)f_indir_pp + (sizeof(uint32_t) * (filebno));
+		uint32_t *f_indir_pp = (uint32_t*)diskaddr(f->f_indirect);
+		*ppdiskbno = f_indir_pp + filebno - NDIRECT;
 	}
 	return 0;
 	// panic("file_block_walk not implemented");

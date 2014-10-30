@@ -189,7 +189,9 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	else
 		count = req->req_n;
 	
-	return file_read(pf->o_file, ret->ret_buf, count, pf->o_fd->fd_offset);
+	count = file_read(pf->o_file, ret->ret_buf, count, pf->o_fd->fd_offset);
+	pf->o_fd->fd_offset += count;
+	return count;
 	
 	//panic("serve_read not implemented");
 }
