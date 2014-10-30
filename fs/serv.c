@@ -177,7 +177,21 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	// so filling in ret will overwrite req.
 	//
 	// LAB 5: Your code here
-	panic("serve_read not implemented");
+	struct OpenFile *pf;
+	size_t count;
+	
+	int r = openfile_lookup(envid, req->req_fileid, &pf);
+	if (r < 0)
+		return r;
+	
+	if (req->req_n > PGSIZE)
+		count = PGSIZE;
+	else
+		count = req->req_n;
+	
+	return file_read(pf->o_file, ret->ret_buf, count, pf->o_fd->fd_offset);
+	
+	//panic("serve_read not implemented");
 }
 
 
@@ -216,7 +230,7 @@ typedef int (*fshandler)(envid_t envid, union Fsipc *req);
 
 fshandler handlers[] = {
 	// Open is handled specially because it passes pages
-	/* [FSREQ_OPEN] =	(fshandler)serve_open, */
+	[FSREQ_OPEN] =	(fshandler)serve_open,
 	[FSREQ_READ] =		serve_read,
 	[FSREQ_STAT] =		serve_stat,
 	[FSREQ_FLUSH] =		(fshandler)serve_flush,
