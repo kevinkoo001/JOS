@@ -25,14 +25,14 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
-	//cprintf("fault %x\n", addr);
+	// @@@ cprintf("fault %x\n", addr);
   
 	// @@@ THIS PART IS IMPORTANT!! OTHERWISE IT WILL ENCOUNTER ANOTHER PAGE FAULT!!
 	void* addr_align = (void*)ROUNDDOWN(utf->utf_fault_va, PGSIZE);
 	uint64_t pn = ((uint64_t)addr) / PGSIZE;
 	
 	if (!((uvpt[pn] & PTE_COW) && (err & FEC_WR)))
-		panic("pgfault: not COW page or not write page fault!");
+		panic("pgfault: not COW page or not write page fault! fault addr: %x", addr);
 	
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -89,14 +89,22 @@ duppage(envid_t envid, unsigned pn)
 	envid_t cur_id = sys_getenvid();
 	int perm = uvpt[pn_64] & 0xfff;
 	
-	// @@@ Check if all va has present bit
-	// @@@ Check if va is writable/COW-able
-	if ((uvpt[pn_64] & PTE_W) || (uvpt[pn_64] & PTE_COW))
+	// @@@ lab 5
+	if (uvpt[pn_64] & PTE_SHARE)
 	{
+		if ((r = sys_page_map(cur_id, addr, envid, addr, PTE_SYSCALL)) < 0)
+			panic("duppage: mapping 0x%x failed!: %e", addr, r);
+		// @@@ cprintf("duppage: enter the share if, addr is %x\n", addr);
+	}
+	
+	// @@@ Check if va is writable/COW-able
+	else if ((uvpt[pn_64] & PTE_W) || (uvpt[pn_64] & PTE_COW))
+	{
+		// @@@ cprintf("duppage: enter the COW if, addr is %x\n", addr);
 		// @@@ map the page copy-on-write into the address space of the child
 		if ((r = sys_page_map(cur_id, addr, envid, addr, PTE_P | PTE_U | PTE_COW)) < 0)
 			panic("duppage: mapping 0x%x failed!: %e", addr, r);
-		// @@@ remap the page copy-on-write in its own address space
+		// @@@ remap the page copy-on-write in its own address space, in case PTE_COW bit is not set in parent pte
 		// @@@ cannot include perm here because we don't want child to have PTE_W
 		if ((r = sys_page_map(cur_id, addr, cur_id, addr, PTE_P | PTE_U | PTE_COW)) < 0)
 			panic("duppage: mapping 0x%x failed!: %e", addr, r);
@@ -182,7 +190,8 @@ fork(void)
 	//cprintf("Before enter for\n");
 	// @@@ this is the tricky part, copied from dumbfork
 	extern unsigned char end[];
-	for (addr = UTEXT; addr < (uintptr_t)end; addr += PGSIZE)
+	//cprintf("fork: the end of envid %x is %x\n", cur_id, end);
+	for (addr = UTEXT; addr < (uintptr_t)(USTACKTOP - PGSIZE); addr += PGSIZE)
 		if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
 		/*if (uvpml4e[VPML4E(addr)] & PTE_P)
 			if (uvpde[VPDPE(addr)] & PTE_P)

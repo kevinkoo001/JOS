@@ -367,7 +367,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 			panic("region_alloc(): allocate new page failed! %e", pp);
 		// @@@ [TODO] Needs to check the permission
 		
-		int result = page_insert(e->env_pml4e, pp, (void*)va_aligned, PTE_USER);
+		// @@@ lab 5: correct this permission
+		int result = page_insert(e->env_pml4e, pp, (void*)va_aligned, PTE_U | PTE_P | PTE_W);
 		// memset((void*)va_aligned, 0x97, PGSIZE);
 		if (result < 0)
 			panic("region_alloc(): %e", result);
@@ -518,11 +519,9 @@ env_create(uint8_t *binary, enum EnvType type)
 	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
 	// LAB 5: Your code here.
 	
-	if (type == ENV_TYPE_FS) {
-		newenv->env_type = ENV_TYPE_FS;
+	if (type == ENV_TYPE_FS)
 		// @@@ refer http://en.wikipedia.org/wiki/IOPL
 		newenv->env_tf.tf_eflags |= FL_IOPL_3;
-	}
 }
 
 //

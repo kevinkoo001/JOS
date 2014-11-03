@@ -39,8 +39,8 @@ bc_pgfault(struct UTrapframe *utf)
 	
 	// @@ int sys_page_alloc(envid_t envid, void *va, int perm) @lib\syscall.c
 	envid_t cur_id = sys_getenvid();
-	if (sys_page_alloc(cur_id, diskBlockVa, PTE_P | PTE_U | PTE_W) < 0)
-		panic("bc_pgfault: alloc for diskBlock failed!");
+	if ((r = sys_page_alloc(cur_id, diskBlockVa, PTE_SYSCALL)) < 0)
+		panic("bc_pgfault: alloc for diskBlock failed! Return value %x", r);
 
 	// @@@ Note that ide_read operates in sectors, not blocks
 	// @@@ BLKSECTS, BLKSIZE @inc\fs.h and SECTSIZE @fs\fs.h

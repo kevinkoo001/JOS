@@ -145,7 +145,7 @@ sys_env_set_status(envid_t envid, int status)
 
 // Set envid's trap frame to 'tf'.
 // tf is modified to make sure that user environments always run at code
-// protection level 3 (CPL 3) with interrupts enabled.		@@@ Do we need to care about this?
+// protection level 3 (CPL 3) with interrupts enabled.		done
 //
 // Returns 0 on success, < 0 on error.  Errors are:
 //	-E_BAD_ENV if environment envid doesn't currently exist,
@@ -163,6 +163,14 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	
 	user_mem_assert(newEnv, tf, sizeof(struct Trapframe),PTE_U | PTE_P);
 	newEnv->env_tf = *tf;
+	
+	// @@@ prevent malicious/unintentional trapframe
+	// @@@ copied from env_alloc()@env.c
+	newEnv->env_tf.tf_ds = GD_UD | 3;
+	newEnv->env_tf.tf_es = GD_UD | 3;
+	newEnv->env_tf.tf_ss = GD_UD | 3;
+	newEnv->env_tf.tf_cs = GD_UT | 3;
+	
 	return 0;
 	//panic("sys_env_set_trapframe not implemented");
 }

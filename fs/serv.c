@@ -180,8 +180,8 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	struct OpenFile *pf;
 	size_t count;
 	
-	int r = openfile_lookup(envid, req->req_fileid, &pf);
-	if (r < 0)
+	int r;
+	if ((r = openfile_lookup(envid, req->req_fileid, &pf)) < 0)
 		return r;
 	
 	if (req->req_n > PGSIZE)
@@ -189,6 +189,7 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	else
 		count = req->req_n;
 	
+	// @@@ Update the number of bytes (count) in a file that has been read 
 	count = file_read(pf->o_file, ret->ret_buf, count, pf->o_fd->fd_offset);
 	pf->o_fd->fd_offset += count;
 	return count;
@@ -232,7 +233,7 @@ typedef int (*fshandler)(envid_t envid, union Fsipc *req);
 
 fshandler handlers[] = {
 	// Open is handled specially because it passes pages
-	[FSREQ_OPEN] =	(fshandler)serve_open,
+	/*[FSREQ_OPEN] =	(fshandler)serve_open,*/
 	[FSREQ_READ] =		serve_read,
 	[FSREQ_STAT] =		serve_stat,
 	[FSREQ_FLUSH] =		(fshandler)serve_flush,

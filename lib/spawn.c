@@ -301,6 +301,23 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	int r;
+	uintptr_t addr;
+	uint64_t pn;
+	envid_t cur_id = sys_getenvid();
+	// @@@ int perm;
+	
+	// @@@ extern unsigned char end[];
+	for (addr = UTEXT; addr < USTACKTOP - PGSIZE; addr += PGSIZE) {
+		if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
+		{
+			pn = PGNUM(addr);
+			// @@@ perm = uvpt[pn] & 0xfff;
+			// @@@ cprintf("copy_shared_pages: perm %x\n",perm);
+			if (uvpt[pn] & PTE_SHARE)
+				if ((r = sys_page_map(cur_id, (void*)addr, child, (void*)addr, PTE_SYSCALL)) < 0)
+					return r;
+		}
+	}
 	return 0;
 }
-

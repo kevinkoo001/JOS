@@ -649,7 +649,8 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create)
 			return NULL;
 		NewPageForPDPT->pp_ref++;	// reference ctr incremented by 1
 		// Assigned new page to *pml4e
-		pml4e[PML4(va)] = (page2pa(NewPageForPDPT) & ~0xFFF) | PTE_USER;
+		// @@@ lab 5: correct this permission
+		pml4e[PML4(va)] = (page2pa(NewPageForPDPT) & ~0xFFF) | PTE_U | PTE_P | PTE_W;
 		pdpe = (pdpe_t *) KADDR(PTE_ADDR(pml4e[PML4(va)]));
 		#ifdef DEBUG
 		//cprintf("[DEBUG2] pml4e_walk(): pdp table doesn't exist!\npml4e_walk: va: %x\n", va);
@@ -700,7 +701,8 @@ pdpe_walk(pdpe_t *pdpe,const void *va,int create)
 			return NULL;
 		NewPageForPDT->pp_ref++;	// reference ctr incremented by 1
 		// Assigned new page to *pdpe
-		pdpe[PDPE(va)] = (page2pa(NewPageForPDT) & ~0xFFF) | PTE_USER;
+		// @@@ lab 5: correct this permission
+		pdpe[PDPE(va)] = (page2pa(NewPageForPDT) & ~0xFFF) | PTE_U | PTE_P | PTE_W;
 		pde = (pde_t *) KADDR(PTE_ADDR(pdpe[PDPE(va)]));
 		#ifdef DEBUG
 		//cprintf("[DEBUG2] pdpe_walk(): &pdpe[PDPE(va)]: %x pdpe[PDPE(va)]: %x\n", &pdpe[PDPE(va)], pdpe[PDPE(va)]);
@@ -749,7 +751,8 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			return NULL;
 		NewPageForPT->pp_ref++;	// reference ctr incremented by 1
 		// Assigned new page to *pdpe
-		pgdir[PDX(va)] = (page2pa(NewPageForPT) & ~0xFFF) | PTE_USER;
+		// lab 5: correct permission;
+		pgdir[PDX(va)] = (page2pa(NewPageForPT) & ~0xFFF) | PTE_U | PTE_P | PTE_W;
 		pte = (pte_t*)KADDR((PTE_ADDR(pgdir[PDX(va)]) & ~0xFFF) + PTX(va)*8);
 		#ifdef DEBUG
 		//cprintf("[DEBUG2] pgdir_walk(): &pgdir[PDX(va)]: %x pgdir[PDX(va)]: %x\n", &pgdir[PDX(va)], pgdir[PDX(va)]);

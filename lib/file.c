@@ -76,8 +76,13 @@ open(const char *path, int mode)
 	if ((r = fd_alloc(&fd)) < 0)
 		return r;
 	
+	// @@@ cprintf("open: path: %s, strlen(path) %d\n", path, strlen(path));
 	// @@@ memcpy(fsipcbuf.open.req_path, path, strlen(path));
-	strcpy(fsipcbuf.open.req_path, path);
+	strncpy(fsipcbuf.open.req_path, path, strlen(path));
+	if (strlen(path) > 0)
+		fsipcbuf.open.req_path[strlen(path)] = '\0';
+	//strcpy(fsipcbuf.open.req_path, path);
+	//cprintf("open: fsipcbuf.open.req_path %s\n", fsipcbuf.open.req_path);
 	fsipcbuf.open.req_omode = mode;
 	if ((r = fsipc(FSREQ_OPEN, fd)) < 0) {
 		if (fd_close(fd, 0) < 0)
@@ -122,19 +127,16 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	fsipcbuf.read.req_n = n;
 	
 	int r;
+	// @@@ Set dstva param to 0 since another page is not necessary
 	if ((r = fsipc(FSREQ_READ, 0)) < 0)
 		return r;
 	
-	//cprintf("devfile_read: the return value of fsipc is: %x\n", r);
+	// @@@ cprintf("devfile_read: the return value of fsipc is: %x\n", r);
 	memcpy(buf, fsipcbuf.readRet.ret_buf, r);
 	return r;
-	/*
-	int r = fsipc(FSREQ_READ, buf);
-	if (r < 0)
-		return r;
-	else
-		return fsipcbuf.
-	*/
+	
+	// @@@ return fsipc(FSREQ_READ, buf);
+	
 	//panic("devfile_read not implemented");
 }
 
