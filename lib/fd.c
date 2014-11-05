@@ -136,10 +136,13 @@ dev_lookup(int dev_id, struct Dev **dev)
 {
 	int i;
 	for (i = 0; devtab[i]; i++)
+	{
+		//cprintf("dev_lookup: dev_id of devtab[%d] is %x\n", i, devtab[i]->dev_id);
 		if (devtab[i]->dev_id == dev_id) {
 			*dev = devtab[i];
 			return 0;
 		}
+	}
 	cprintf("[%08x] unknown device type %d\n", thisenv->env_id, dev_id);
 	*dev = 0;
 	return -E_INVAL;
@@ -209,7 +212,10 @@ read(int fdnum, void *buf, size_t n)
 
 	if ((r = fd_lookup(fdnum, &fd)) < 0
 	    || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0)
+	{
+		cprintf("read: fd lookup failed or device lookup failed! r %x\n", r);
 		return r;
+	}
 	if ((fd->fd_omode & O_ACCMODE) == O_WRONLY) {
 		cprintf("[%08x] read %d -- bad mode\n", thisenv->env_id, fdnum);
 		return -E_INVAL;
