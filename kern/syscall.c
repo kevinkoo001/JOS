@@ -193,7 +193,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	
 	// @@@ cprintf("sys_env_set_pgfault_upcall: addr of func is %x\n", func);
 	// @@@ lab 5 add sanity check:
-	user_mem_assert(e, func, sizeof(func), PTE_P|PTE_U);
+	//user_mem_assert(e, func, sizeof(func), PTE_P|PTE_U);
 	
 	e->env_pgfault_upcall = func;
 	return 0;

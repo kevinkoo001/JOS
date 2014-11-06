@@ -180,6 +180,11 @@ fork(void)
 	if (sys_page_alloc(child_env, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0)
 		panic("fork: alloc exception stack failed!");
 	
+	extern void _pgfault_upcall(void);
+	//cprintf("fork: gonna call sys_env_set_pgfault_upcall!\n");
+	if (sys_env_set_pgfault_upcall(child_env, _pgfault_upcall) < 0)
+		panic("fork: upcall failed!");
+	
 	// @@@ for parent:
 	// @@@ PGNUM(la) in inc/mmu.h
 	//cprintf("Before enter for\n");
@@ -233,10 +238,7 @@ fork(void)
 	
 	// @@@ lab 5: move this to here, invoke sys_env_set_pgfault_upcall after copy memory from parent
 	// @@@ set the user page fault entrypoint
-	extern void _pgfault_upcall(void);
-	//cprintf("fork: gonna call sys_env_set_pgfault_upcall!\n");
-	if (sys_env_set_pgfault_upcall(child_env, _pgfault_upcall) < 0)
-		panic("fork: upcall failed!");
+	
 	
 	// cprintf("fork: finished!\n");
 	return child_env;
