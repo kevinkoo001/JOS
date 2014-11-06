@@ -29,11 +29,15 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 	if (_pgfault_handler == 0) {
 		// First time through!
 		// LAB 4: Your code here.
-		if (sys_page_alloc(sys_getenvid(), (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0)
+		// @@@ lab 5 optimization
+		envid_t envid = sys_getenvid();
+		
+		if (sys_page_alloc(envid, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0)
 			panic("set_pgfault_handler: alloc exception stack failed!");
 			
 		// @@@ call _pgfault_upcall function
-		if (sys_env_set_pgfault_upcall(sys_getenvid(), _pgfault_upcall) < 0)
+		// @@@ cprintf("set_pgfault_handler: gonna call sys_env_set_pgfault_upcall!\n");
+		if (sys_env_set_pgfault_upcall(envid, _pgfault_upcall) < 0)
 			panic("set_pgfault_handler: upcall failed!");
 		//panic("set_pgfault_handler not implemented");
 	}

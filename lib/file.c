@@ -76,14 +76,14 @@ open(const char *path, int mode)
 	if ((r = fd_alloc(&fd)) < 0)
 		return r;
 	
-	//cprintf("open: newly created fd %x with dev_id %d\n", fd, fd->fd_dev_id);
+	envid_t cur_id = sys_getenvid();
+	// @@@ cprintf("[%08x] open: newly created fd %x\n", cur_id, fd);
 	// @@@ cprintf("open: path: %s, strlen(path) %d\n", path, strlen(path));
 	// @@@ memcpy(fsipcbuf.open.req_path, path, strlen(path));
 	strncpy(fsipcbuf.open.req_path, path, strlen(path));
 	if (strlen(path) > 0)
 		fsipcbuf.open.req_path[strlen(path)] = '\0';
 	//strcpy(fsipcbuf.open.req_path, path);
-	//cprintf("open: fsipcbuf.open.req_path %s\n", fsipcbuf.open.req_path);
 	fsipcbuf.open.req_omode = mode;
 	if ((r = fsipc(FSREQ_OPEN, fd)) < 0) {
 		if (fd_close(fd, 0) < 0)
@@ -91,7 +91,7 @@ open(const char *path, int mode)
 		return r;
 	}
 	
-	cprintf("open: opened %s, FD: %x, filebno: %d\n", path, fd, ((uint64_t)fd - 0xD0000000)/PGSIZE);
+	// @@@ cprintf("[%08x] open: opened %s, addr of FD: %x, dev id: %d\n", cur_id, path, fd, fd->fd_dev_id);
 	return ((uint64_t)fd - 0xD0000000)/PGSIZE;
 	
 	//panic ("open not implemented");

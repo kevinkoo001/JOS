@@ -191,6 +191,10 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 	if(envid2env(envid, &e, 1) < 0)
 		return -E_BAD_ENV;
 	
+	// @@@ cprintf("sys_env_set_pgfault_upcall: addr of func is %x\n", func);
+	// @@@ lab 5 add sanity check:
+	user_mem_assert(e, func, sizeof(func), PTE_P|PTE_U);
+	
 	e->env_pgfault_upcall = func;
 	return 0;
 	// panic("sys_env_set_pgfault_upcall not implemented");
@@ -396,7 +400,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		return -E_BAD_ENV;
 	
 	// @@@ -E_IPC_NOT_RECV if envid is not currently blocked in sys_ipc_recv,
-	if (!newEnv->env_ipc_recving)
+	if ((!newEnv->env_ipc_recving) || (newEnv->env_status != ENV_NOT_RUNNABLE))
 		return -E_IPC_NOT_RECV;
 	
 	newEnv->env_ipc_perm = 0;

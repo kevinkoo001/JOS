@@ -833,7 +833,7 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm)
 	if (*pte & PTE_P)
 		page_remove(pml4e, va);
 
-		pp->pp_ref++;
+	pp->pp_ref++;
 	*pte = (page2pa(pp) & ~0xFFF) | (perm|PTE_P);
 	#ifdef DEBUG
 	cprintf("[DEBUG2] page_insert(): pte %x, *pte: %x\n", pte, *pte);
@@ -859,11 +859,13 @@ page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store)
 	// Fill this function in
 	struct PageInfo *result;
 	pte_t *pte = pml4e_walk(pml4e, va, 0);
-	if(pte == NULL) 
+	// @@@ lab 5: added !(*pte & PTE_P)
+	if((pte == NULL) || !(*pte & PTE_P)) 
 		return NULL;
-
-	physaddr_t pa = (physaddr_t)((*pte & ~0xFFF) + PGOFF(va));
-	result = pa2page(pa);
+	
+	// @@@ lab 5: use pa2page directly
+	//physaddr_t pa = (physaddr_t)((*pte & ~0xFFF) + PGOFF(va));
+	result = pa2page(*pte);
 	if(pte_store != NULL)
 		*pte_store = pte;
 	return result;
@@ -888,14 +890,17 @@ void
 page_remove(pml4e_t *pml4e, void *va)
 {
 	// Fill this function in
-	struct PageInfo *PageToBeRemoved = page_lookup(pml4e, va, 0);
+	pte_t *pte;
+	
+	struct PageInfo *PageToBeRemoved = page_lookup(pml4e, va, &pte);
 	if(PageToBeRemoved != NULL)
 	{
 		page_decref(PageToBeRemoved);
-		pte_t *pte = pml4e_walk(pml4e, va, 0);
-		if (pte != NULL)
+		//pte_t *pte = pml4e_walk(pml4e, va, 0);
+		if (pte != NULL) {
 			*pte = 0;
-		tlb_invalidate(pml4e, va);
+			tlb_invalidate(pml4e, va);
+		}
 	}
 }
 
@@ -945,10 +950,10 @@ mmio_map_region(physaddr_t pa, size_t size)
 	//
 	// Your code here:
 	size_t top = ROUNDUP(size, PGSIZE);
-	if (base + top > MMIOLIM)
+	if ((char*)base + top > (char*)MMIOLIM)
 		panic("mmio map exceeds MMIOLIM!");
 	boot_map_region(boot_pml4e, base, top, pa, PTE_PCD|PTE_PWT|PTE_W);
-	void *result = (void*)base;
+	char *result = (char*)base;
 	base += top;
 	return result;
 	//panic("mmio_map_region not implemented");

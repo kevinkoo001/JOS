@@ -180,24 +180,34 @@ fork(void)
 	if (sys_page_alloc(child_env, (void*)(UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0)
 		panic("fork: alloc exception stack failed!");
 	
-	// @@@ set the user page fault entrypoint
-	extern void _pgfault_upcall(void);
-	if (sys_env_set_pgfault_upcall(child_env, _pgfault_upcall) < 0)
-		panic("fork: upcall failed!");
-	
 	// @@@ for parent:
 	// @@@ PGNUM(la) in inc/mmu.h
 	//cprintf("Before enter for\n");
 	// @@@ this is the tricky part, copied from dumbfork
-	extern unsigned char end[];
+	// @@@ extern unsigned char end[];
 	//cprintf("fork: the end of envid %x is %x\n", cur_id, end);
 	for (addr = UTEXT; addr < (uintptr_t)(USTACKTOP - PGSIZE); addr += PGSIZE)
-		if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
-		/*if (uvpml4e[VPML4E(addr)] & PTE_P)
-			if (uvpde[VPDPE(addr)] & PTE_P)
-				if (uvpd[VPD(addr)] & PTE_P)
-					if (uvpt[PGNUM(addr)] & (PTE_P | PTE_U))*/
+	{
+		/*if ((uvpml4e[VPML4E(addr)] & PTE_P) && (uvpde[VPDPE(addr)] & PTE_P) && (uvpd[VPD(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
+			duppage(child_env, PGNUM(addr));*/
+		if (!(uvpml4e[VPML4E(addr)] & PTE_P))
+		{
+			addr += (0x7ffffff << 12);
+			continue;
+		}
+		if (!(uvpde[VPDPE(addr)] & PTE_P))
+		{
+			addr += (0x3ffff << 12);
+			continue;
+		}
+		if (!(uvpd[VPD(addr)] & PTE_P))
+		{
+			addr += (0x1ff << 12);
+			continue;
+		}
+		if ((uvpt[PGNUM(addr)] & (PTE_P | PTE_U)))
 			duppage(child_env, PGNUM(addr));
+	}
 	
 	/*duppage(child_env, PGNUM(0x800000));
 	duppage(child_env, PGNUM(0x801000));
@@ -220,6 +230,13 @@ fork(void)
 	// @@@ mark it runnable
 	if ((sys_env_set_status(child_env, ENV_RUNNABLE)) < 0)
 		panic("fork: set runnable failed!\n");
+	
+	// @@@ lab 5: move this to here, invoke sys_env_set_pgfault_upcall after copy memory from parent
+	// @@@ set the user page fault entrypoint
+	extern void _pgfault_upcall(void);
+	//cprintf("fork: gonna call sys_env_set_pgfault_upcall!\n");
+	if (sys_env_set_pgfault_upcall(child_env, _pgfault_upcall) < 0)
+		panic("fork: upcall failed!");
 	
 	// cprintf("fork: finished!\n");
 	return child_env;

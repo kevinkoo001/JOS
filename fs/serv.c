@@ -152,6 +152,9 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 	// store its permission in *perm_store
 	*pg_store = o->o_fd;
 	*perm_store = PTE_P|PTE_U|PTE_W|PTE_SHARE;
+	
+	envid_t cur_id = sys_getenvid();
+	// @@@ cprintf("[%08x] serve_open: dev id is: %d\n", cur_id, o->o_fd->fd_dev_id);
 
 	return 0;
 }

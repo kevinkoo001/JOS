@@ -103,9 +103,14 @@ fd_close(struct Fd *fd, bool must_exist)
 	struct Fd *fd2;
 	struct Dev *dev;
 	int r;
+	envid_t cur_id = sys_getenvid();
+	
 	if ((r = fd_lookup(fd2num(fd), &fd2)) < 0
 	    || fd != fd2)
 		return (must_exist ? r : 0);
+	
+	// @@@ cprintf("[%08x] fd_close: about to close fd %x with dev id %d\n", cur_id, fd, fd->fd_dev_id);
+	
 	if ((r = dev_lookup(fd->fd_dev_id, &dev)) >= 0) {
 		if (dev->dev_close)
 			r = (*dev->dev_close)(fd);
@@ -115,6 +120,7 @@ fd_close(struct Fd *fd, bool must_exist)
 	// Make sure fd is unmapped.  Might be a no-op if
 	// (*dev->dev_close)(fd) already unmapped it.
 	(void) sys_page_unmap(0, fd);
+	// @@@ cprintf("[%08x] fd_close: closed fd %x\n", cur_id, fd);
 	return r;
 }
 
@@ -209,11 +215,12 @@ read(int fdnum, void *buf, size_t n)
 	int r;
 	struct Dev *dev;
 	struct Fd *fd;
+	envid_t cur_id = sys_getenvid();
 
 	if ((r = fd_lookup(fdnum, &fd)) < 0
 	    || (r = dev_lookup(fd->fd_dev_id, &dev)) < 0)
 	{
-		cprintf("read: fd lookup failed or device lookup failed! r %x\n", r);
+		cprintf("[%08x] readfd: fd %08x lookup failed or device lookup failed! dev id %x\n", cur_id, fd, fd->fd_dev_id);
 		return r;
 	}
 	if ((fd->fd_omode & O_ACCMODE) == O_WRONLY) {
